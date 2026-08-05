@@ -29,21 +29,35 @@
 
     /* ---- tabs ----------------------------------------------------------- */
 
-    buildTabs: function () {
+    /* Rebuild the tab strip only when its contents actually change.
+
+       Rebuilding on a timer destroyed and recreated every tab button twice a
+       second. A normal-speed click holds the mouse down for 150-400ms, so the
+       button the user pressed was usually gone by the time they released and
+       no click event ever fired — three out of four tab clicks were silently
+       swallowed. */
+    buildTabs: function (force) {
+      var self = this;
+      var visible = G.PANELS.filter(function (p) { return p.visible(self.game); });
+      var sig = visible.map(function (p) {
+        return p.id + (p.id === self.activeTab ? '*' : '') + (self.seenTabs[p.id] ? '' : '!');
+      }).join('|');
+      if (!force && sig === this.tabSig) return;
+      this.tabSig = sig;
+
       var nav = document.getElementById('tabs');
       U.clear(nav);
-      var self = this;
-      G.PANELS.forEach(function (p) {
-        if (!p.visible(self.game)) return;
+      visible.forEach(function (p) {
         var t = el('button', 'tab' + (p.id === self.activeTab ? ' active' : ''));
         t.type = 'button';
+        t.dataset.panel = p.id;
         t.appendChild(el('span', null, p.icon));
         t.appendChild(el('span', null, p.label));
         if (!self.seenTabs[p.id] && p.id !== self.activeTab) t.appendChild(el('span', 'dot'));
         t.addEventListener('click', function () {
           self.activeTab = p.id;
           self.seenTabs[p.id] = true;
-          self.buildTabs();
+          self.buildTabs(true);
           self.renderPanel();
         });
         nav.appendChild(t);
@@ -92,11 +106,30 @@
 
       this.panelTimer += dt;
       if (this.dirty || this.panelTimer > 0.5) {
-        this.panelTimer = 0;
-        this.dirty = false;
-        this.buildTabs();
-        this.renderPanel();
+        if (this.busy()) {
+          // Held for later: rebuilding now would yank the control out from
+          // under the user's finger.
+          this.dirty = true;
+        } else {
+          this.panelTimer = 0;
+          this.dirty = false;
+          this.buildTabs();
+          this.renderPanel();
+        }
       }
+    },
+
+    /* True while the user is mid-interaction with the panel. Rebuilding then
+       is what makes clicks disappear: the pressed element is replaced before
+       the pointer comes back up, and an open <select> closes instantly. */
+    busy: function () {
+      if (this.pointerDown) return true;
+      var a = document.activeElement;
+      if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
+        var side = document.getElementById('side');
+        if (side && side.contains(a)) return true;
+      }
+      return false;
     },
 
     /* The wall banner. This is the single most important piece of guidance in
@@ -125,6 +158,27 @@
       document.getElementById('btn-settings').addEventListener('click', function () {
         self.openSettings();
       });
+
+      /* Pointer-down anywhere in the panel column pauses rebuilds until the
+         pointer comes back up, so a press always reaches the element it
+         started on. The timeout is a safety net for a pointerup that never
+         arrives (dragged out of the window, lost capture). */
+      var side = document.getElementById('side');
+      side.addEventListener('pointerdown', function () {
+        self.pointerDown = true;
+        clearTimeout(self._pdTimer);
+        self._pdTimer = setTimeout(function () { self.pointerDown = false; }, 4000);
+      }, true);
+
+      function release() {
+        if (!self.pointerDown) return;
+        self.pointerDown = false;
+        clearTimeout(self._pdTimer);
+        self.refresh();
+      }
+      window.addEventListener('pointerup', release, true);
+      window.addEventListener('pointercancel', release, true);
+      window.addEventListener('blur', release);
     },
 
     bindStation: function () {
@@ -191,7 +245,10 @@
         t.classList.add('out');
         setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
       }, 3600);
-      while (host.children.length > 4) host.removeChild(host.firstChild);
+      // The mine stage is a narrow strip on phones; more than a couple of
+      // toasts and the player cannot see the thing the toasts are about.
+      var maxToasts = window.innerWidth < 900 ? 2 : 4;
+      while (host.children.length > maxToasts) host.removeChild(host.firstChild);
     },
 
     /* ---- modals ---------------------------------------------------------- */

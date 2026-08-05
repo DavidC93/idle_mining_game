@@ -55,8 +55,9 @@
     G.bus.on('break', function (p) { scene.onBreak(p); });
     G.bus.on('forgeDone', function (p) {
       scene.parts.text(scene.w * 0.5, scene.h * 0.3,
-        '🔥 ' + G.num.fmtCount(p.n) + ' ' + G.res(p.recipe.out.id).name,
-        G.Scene.readable(G.res(p.recipe.out.id).color), { bold: true });
+        '+' + G.num.fmtCount(p.n) + ' ' + G.res(p.recipe.out.id).name,
+        G.Scene.readable(G.res(p.recipe.out.id).color),
+        { bold: true, size: 20, icon: p.recipe.out.id, iconSize: 28 });
     });
   }
 

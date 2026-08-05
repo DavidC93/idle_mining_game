@@ -97,7 +97,7 @@
      game's pacing spine, and an exponential multiplier here would let one
      upgrade line skip whole strata and wreck every other curve. */
   function depthPerBreak(o) {
-    return BAL.baseDepthPerBreak + o.depthFlat;
+    return o.depthPerBreak !== undefined ? o.depthPerBreak : (BAL.baseDepthPerBreak + o.depthFlat);
   }
 
   /* ---- loot -------------------------------------------------------------- */

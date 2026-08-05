@@ -10,6 +10,54 @@
 
   function goldText(v) { return num.fmt(v) + ' ז׳'; }
 
+  /* ---------------------------------------------------------------------- */
+  /* Live stat readouts.
+
+     "+8% mining power per level" tells you nothing about whether the next
+     purchase is worth 40,000 gold. "3.4 -> 3.7 swings per second" does. Every
+     repeatable purchase shows its real current value and what the pending buy
+     would make it. */
+
+  function fmtReadout(v, kind) {
+    switch (kind) {
+      case 'mult':  return '×' + num.fmt(v);
+      case 'pct':   return num.fmtPct(v, v < 0.1 ? 1 : 0);
+      case 'time':  return num.fmtTime(v);
+      case 'depth': return num.fmtDepth(v);
+      default:      return num.fmt(v);
+    }
+  }
+
+  /* "label: current → next", with the delta coloured by whether it helps. */
+  function readoutLine(def, cur, next) {
+    var ro = G.Stats.readoutFor(def);
+    if (!ro) return null;
+    var a = cur[ro.key], b = next ? next[ro.key] : null;
+    var line = el('div', 'row-stat');
+    line.appendChild(el('span', 'row-stat-label', ro.label));
+    line.appendChild(el('b', null, fmtReadout(a, ro.kind)));
+    if (next && Math.abs(b - a) > 1e-9) {
+      var better = ro.lower ? b < a : b > a;
+      line.appendChild(el('span', 'row-stat-arrow', '←'));
+      line.appendChild(el('b', better ? 'good' : 'bad', fmtReadout(b, ro.kind)));
+    }
+    return line;
+  }
+
+  /* Some upgrades move a second thing worth knowing about; surface it so the
+     player is not guessing at what a purchase really does. */
+  function extraNote(id, cur) {
+    if (id === 'sharpness' || id === 'lanterns' || id === 'resonance') {
+      return 'נזק לשנייה: ' + num.fmt(cur.dps);
+    }
+    if (id === 'swiftness') return 'נזק לשנייה: ' + num.fmt(cur.dps);
+    if (id === 'critChance') return 'שלל ממוצע לשבירה: ×' +
+      num.fmt(1 + cur.crit * (cur.critMult - 1));
+    if (id === 'critPower') return 'שלל ממוצע לשבירה: ×' +
+      num.fmt(1 + cur.crit * (cur.critMult - 1));
+    return null;
+  }
+
   /* =====================================================================
      MINE — the pickaxe, the current layer, and what you are carrying
      ===================================================================== */
@@ -263,11 +311,19 @@
           var b = G.Shop.bulkCost(s, up, s.settings.buyAmount);
           var can = !maxed && b.count > 0 && s.gold >= b.cost;
 
+          var next = maxed || b.count <= 0 ? null : G.Stats.preview(s, 'upgrade', up.id, b.count);
+          var stats = el('div', 'row-stats');
+          var line = readoutLine(up, game.o, next);
+          if (line) stats.appendChild(line);
+          var note = extraNote(up.id, game.o);
+          if (note) stats.appendChild(el('div', 'row-stat muted', note));
+
           uc.body.appendChild(U.buyRow({
             icon: up.icon,
             name: up.name,
             level: 'רמה ' + lvl + (up.max !== undefined ? '/' + up.max : ''),
             desc: up.desc,
+            extra: stats,
             costText: maxed ? null : goldText(b.cost),
             costSub: maxed ? null : (b.count > 1 ? '×' + b.count : null),
             affordable: can,
@@ -509,11 +565,17 @@
           var lvl = G.Prestige.talentLevel(s, t.id);
           var maxed = lvl >= t.max;
           var cost = G.talentCost(t, lvl);
+          var nextO = maxed ? null : G.Stats.preview(s, 'talent', t.id, 1);
+          var tStats = el('div', 'row-stats');
+          var tLine = readoutLine(t, o, nextO);
+          if (tLine) tStats.appendChild(tLine);
+
           tc.body.appendChild(U.buyRow({
             icon: t.icon,
             name: t.name,
             level: lvl + '/' + t.max,
             desc: t.desc,
+            extra: tLine ? tStats : null,
             costText: maxed ? null : num.fmt(cost) + ' 💠',
             affordable: !maxed && s.cores >= cost,
             maxed: maxed,

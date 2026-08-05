@@ -221,19 +221,21 @@ button:disabled { cursor: not-allowed; }
   border-inline-start: 1px solid var(--line);
 }
 
+/* Wrap rather than scroll. A horizontally scrolling strip pushed the last two
+   tabs off-screen, where a click landed on whichever tab was actually rendered
+   at those coordinates — indistinguishable, from the player's side, from the
+   button simply not working. */
 #tabs {
   flex: 0 0 auto;
-  display: flex; gap: 2px;
+  display: flex; flex-wrap: wrap; gap: 2px;
   padding: 6px 6px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
   border-bottom: 1px solid var(--line);
 }
-#tabs::-webkit-scrollbar { display: none; }
 
 .tab {
   position: relative;
-  padding: 8px 12px 9px;
+  flex: 0 1 auto;
+  padding: 8px 11px 9px;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   color: var(--ink-3);
   font-size: 12.5px;
@@ -347,6 +349,19 @@ button:disabled { cursor: not-allowed; }
 .buy-amounts { display: flex; gap: 4px; }
 .buy-amounts .chip { padding: 3px 9px; font-size: 11px; }
 
+/* live stat readouts inside a buy row */
+.row-stats { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
+.row-stat {
+  display: flex; align-items: baseline; gap: 5px;
+  font-size: 11.5px; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.row-stat-label { color: var(--ink-3); }
+.row-stat b { color: var(--ink); font-weight: 600; }
+.row-stat b.good { color: var(--ok); }
+.row-stat b.bad { color: var(--bad); }
+.row-stat-arrow { color: var(--ink-3); font-size: 10px; }
+
 /* ---- progress bars ---- */
 .bar {
   position: relative;
@@ -380,6 +395,12 @@ button:disabled { cursor: not-allowed; }
   min-width: 0;
 }
 .inv-item:hover { border-color: var(--line); }
+.res-icon {
+  flex: 0 0 auto;
+  display: block;
+  image-rendering: auto;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+}
 .inv-swatch {
   flex: 0 0 auto;
   width: 18px; height: 18px; border-radius: 5px;
@@ -409,7 +430,10 @@ button:disabled { cursor: not-allowed; }
 .slot .bar { margin-top: 6px; }
 
 .recipe-cost { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 3px; }
-.recipe-cost span { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.recipe-cost span {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
 .recipe-cost span.short { color: var(--bad); }
 
 /* ---- contracts ---- */
@@ -534,9 +558,13 @@ button:disabled { cursor: not-allowed; }
 
 @media (max-width: 900px) {
   #main { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 38vh) 1fr; }
-  /* The stage is only the top strip on narrow screens, so the toasts move up
-     with it rather than landing in the middle of the shop list. */
-  #toasts { top: 58px; bottom: auto; right: 10px; left: 10px; max-width: none; }
+  /* On a phone the mine is only the top strip, so full-size toasts stacked
+     four deep cover the entire thing. Compact, capped at two (see UI.toast),
+     and pinned to the top edge. */
+  #toasts { top: 54px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 5px; }
+  .toast { padding: 6px 10px; font-size: 11.5px; }
+  .toast .t-icon { font-size: 15px; }
+  .toast small { display: none; }
   #side { border-inline-start: 0; border-top: 1px solid var(--line); }
   .brand-text { display: none; }
   #topbar { padding: 6px 10px; gap: 10px; }

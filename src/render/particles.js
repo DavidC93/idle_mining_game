@@ -45,20 +45,26 @@
     }
   };
 
-  /* A drifting label: "+12 פחם". */
+  /* A drifting label: "+12 פחם", optionally with the resource sprite beside it. */
   Particles.prototype.text = function (x, y, text, color, opts) {
     opts = opts || {};
+    /* Batched labels pass spread:0 and a fixed vy so a stack of them rises in
+       formation. Random drift makes lanes converge and overlap, which is the
+       whole thing the lanes exist to prevent. */
+    var spread = opts.spread === undefined ? 26 : opts.spread;
     this._push({
       kind: 'text',
-      x: x + (Math.random() - 0.5) * 26,
+      x: x + (Math.random() - 0.5) * spread,
       y: y,
-      vx: (Math.random() - 0.5) * 14,
-      vy: -(34 + Math.random() * 16),
+      vx: spread ? (Math.random() - 0.5) * 14 : 0,
+      vy: opts.vy !== undefined ? opts.vy : -(34 + Math.random() * 16),
       text: text,
       color: color || '#fff',
-      size: opts.size || 13,
+      size: opts.size || 19,
       bold: !!opts.bold,
-      life: 0, max: opts.life || 1.15
+      icon: opts.icon || null,          // resource id to draw next to the text
+      iconSize: opts.iconSize || 26,
+      life: 0, max: opts.life || 1.5
     });
   };
 
@@ -133,12 +139,33 @@
 
       if (p.kind === 'text') {
         ctx.font = (p.bold ? '700 ' : '600 ') + p.size + 'px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 4;
         ctx.strokeStyle = 'rgba(0,0,0,.85)';
-        ctx.strokeText(p.text, p.x, p.y);
-        ctx.fillStyle = p.color;
-        ctx.fillText(p.text, p.x, p.y);
+        // The labels are Hebrew with a leading number; without an RTL base
+        // direction the canvas lays "+3 עפרת בדיל" out in visual order and it
+        // comes out scrambled.
+        ctx.direction = 'rtl';
+
+        if (p.icon && G.Sprites) {
+          // Icon sits on the right — the side a Hebrew reader starts from —
+          // and the text flows away from it as one unit.
+          var gap = 6;
+          var tw = ctx.measureText(p.text).width;
+          var total = p.iconSize + gap + tw;
+          var right = p.x + total / 2;
+          G.Sprites.blit(ctx, p.icon, right - p.iconSize / 2, p.y - p.size * 0.32, p.iconSize);
+          ctx.textAlign = 'right';
+          var tx = right - p.iconSize - gap;
+          ctx.strokeText(p.text, tx, p.y);
+          ctx.fillStyle = p.color;
+          ctx.fillText(p.text, tx, p.y);
+        } else {
+          ctx.textAlign = 'center';
+          ctx.strokeText(p.text, p.x, p.y);
+          ctx.fillStyle = p.color;
+          ctx.fillText(p.text, p.x, p.y);
+        }
+        ctx.direction = 'ltr';
       } else if (p.kind === 'chip') {
         ctx.save();
         ctx.translate(p.x, p.y);

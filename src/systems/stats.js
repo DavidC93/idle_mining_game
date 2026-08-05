@@ -80,7 +80,56 @@
     o.swingRate = BAL.baseSwingRate * o.speed;
     o.dps = o.hitPower * o.swingRate;
 
+    // Player-facing quantities, so the shop can quote the number the player
+    // actually experiences rather than the internal multiplier behind it.
+    o.yieldPerBreak = BAL.baseYield * o.yield;
+    o.depthPerBreak = BAL.baseDepthPerBreak + o.depthFlat;
+
     return o;
+  }
+
+  /* Stats as they would be with `id` bumped by `levels`. Used to show players
+     what the next purchase actually buys, in real units. compute() is pure, so
+     bumping the level, computing and putting it back is safe. */
+  function preview(s, kind, id, levels) {
+    var bag = kind === 'talent' ? s.talents : s.upgrades;
+    var before = bag[id] || 0;
+    bag[id] = before + (levels || 1);
+    var o;
+    try { o = compute(s); } finally { bag[id] = before; }
+    return o;
+  }
+
+  /* Which derived stat a definition moves, for definitions that do not name one
+     explicitly. Lets the talent tree get the same readouts as the shop for free. */
+  var READOUT_BY_STAT = {
+    power:       { key: 'hitPower',      label: 'עוצמת מכה',        kind: 'num' },
+    speed:       { key: 'swingRate',     label: 'הנפות בשנייה',     kind: 'num' },
+    yield:       { key: 'yieldPerBreak', label: 'משאבים לכל שבירה', kind: 'num' },
+    depthFlat:   { key: 'depthPerBreak', label: 'מטרים לכל שבירה',  kind: 'num' },
+    price:       { key: 'price',         label: 'מחיר מכירה',       kind: 'mult' },
+    orePrice:    { key: 'orePrice',      label: 'ערך עפרה גולמית',  kind: 'mult' },
+    forge:       { key: 'forge',         label: 'מהירות היתוך',     kind: 'mult' },
+    crew:        { key: 'crew',          label: 'תפוקת צוות',       kind: 'mult' },
+    fuel:        { key: 'fuel',          label: 'צריכת דלק',        kind: 'mult', lower: true },
+    luck:        { key: 'luck',          label: 'סיכוי לממצא נדיר', kind: 'pct' },
+    crit:        { key: 'crit',          label: 'סיכוי קריטי',      kind: 'pct' },
+    critMult:    { key: 'critMult',      label: 'מכפיל שלל קריטי',  kind: 'mult' },
+    offline:     { key: 'offline',       label: 'יעילות לא־מקוונת', kind: 'pct' },
+    offlineCap:  { key: 'offlineCap',    label: 'תקרת צבירה',       kind: 'time' },
+    startDepth:  { key: 'startDepth',    label: 'עומק פתיחה',       kind: 'depth' },
+    keepPick:    { key: 'keepPick',      label: 'דרגות מכוש נשמרות', kind: 'num' },
+    keepRes:     { key: 'keepRes',       label: 'משאבים נשמרים',    kind: 'pct' },
+    coreBonus:   { key: 'coreBonus',     label: 'ליבות בהתמוטטות',  kind: 'mult' }
+  };
+
+  function readoutFor(def) {
+    if (def.readout) return def.readout;
+    var eff = def.effect;
+    if (!eff) return null;
+    var first = eff.multi ? eff.multi[0] : eff;
+    var stat = first.mult || first.add || first.decay;
+    return READOUT_BY_STAT[stat] || null;
   }
 
   /* Rock HP at a depth inside a stratum. */
@@ -123,7 +172,8 @@
   }
 
   G.Stats = {
-    compute: compute, rockHP: rockHP, condMet: condMet,
+    compute: compute, preview: preview, readoutFor: readoutFor,
+    rockHP: rockHP, condMet: condMet,
     maxUnlockedStratum: maxUnlockedStratum, depthCap: depthCap, blank: blank
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

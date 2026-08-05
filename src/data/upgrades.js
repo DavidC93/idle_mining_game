@@ -7,76 +7,97 @@
 (function (G) {
   'use strict';
 
-  /* effect kinds are read by systems/stats.js */
+  /* effect kinds are read by systems/stats.js.
+
+     `readout` names the derived stat this upgrade actually moves, so the shop
+     row can show the live number ("3.4 → 3.6 swings per second") instead of
+     only promising a percentage. `kind` picks the formatting:
+       num  — a plain quantity        mult — an "x2.4" multiplier
+       pct  — a percentage            (lower: true marks lower-is-better)      */
   var UPGRADES = [
     { id: 'sharpness', name: 'חידוד המכוש', icon: '⛏',
       desc: 'כל רמה מוסיפה 8% לעוצמת הכרייה.',
-      base: 25, rate: 1.35, effect: { mult: 'power', per: 0.08 } },
+      base: 25, rate: 1.35, effect: { mult: 'power', per: 0.08 },
+      readout: { key: 'hitPower', label: 'עוצמת מכה', kind: 'num' } },
 
     { id: 'swiftness', name: 'זריזות ידיים', icon: '💨',
       desc: 'כל רמה מוסיפה 5% למהירות ההנפה.',
-      base: 90, rate: 1.45, effect: { mult: 'speed', per: 0.05 }, max: 250 },
+      base: 90, rate: 1.45, effect: { mult: 'speed', per: 0.05 }, max: 250,
+      readout: { key: 'swingRate', label: 'הנפות בשנייה', kind: 'num' } },
 
     { id: 'yield', name: 'עגלה גדולה יותר', icon: '🛒',
       desc: 'כל רמה מוסיפה 7% לכמות המשאבים מכל שבירה.',
-      base: 300, rate: 1.55, effect: { mult: 'yield', per: 0.07 } },
+      base: 300, rate: 1.55, effect: { mult: 'yield', per: 0.07 },
+      readout: { key: 'yieldPerBreak', label: 'משאבים לכל שבירה', kind: 'num' } },
 
     { id: 'excavation', name: 'טכניקת חפירה', icon: '📐',
       desc: 'כל רמה מוסיפה 0.08 מ׳ להתקדמות בעומק לכל שבירה.',
-      base: 500, rate: 1.16, effect: { add: 'depthFlat', per: 0.08 }, max: 50 },
+      base: 500, rate: 1.16, effect: { add: 'depthFlat', per: 0.08 }, max: 50,
+      readout: { key: 'depthPerBreak', label: 'מטרים לכל שבירה', kind: 'num' } },
 
     { id: 'fortune', name: 'עין המחפש', icon: '🔍',
       desc: 'כל רמה מוסיפה 1.2% לסיכוי למצוא משאב נדיר משכבה עמוקה יותר (מקסימום 60%).',
       base: 1200, rate: 1.22, effect: { add: 'luck', per: 0.012 }, max: 35,
+      readout: { key: 'luck', label: 'סיכוי לממצא נדיר', kind: 'pct' },
       unlock: { depth: 200 } },
 
     { id: 'critChance', name: 'מכת עורק', icon: '⚡',
       desc: 'כל רמה מוסיפה 0.8% לסיכוי למכה קריטית שמנפצת סלע מיידית.',
       base: 2500, rate: 1.24, effect: { add: 'crit', per: 0.008 }, max: 55,
+      readout: { key: 'crit', label: 'סיכוי קריטי', kind: 'pct' },
       unlock: { depth: 350 } },
 
     { id: 'critPower', name: 'עוצמת ניפוץ', icon: '💥',
       desc: 'כל רמה מוסיפה 25% לנזק הקריטי ולשלל שהוא מפיל.',
       base: 4000, rate: 1.21, effect: { add: 'critMult', per: 0.25 },
+      readout: { key: 'critMult', label: 'מכפיל שלל קריטי', kind: 'mult' },
       unlock: { upgrade: ['critChance', 5] } },
 
     { id: 'haggling', name: 'כושר מיקוח', icon: '💰',
       desc: 'כל רמה מוסיפה 6% למחירי המכירה בשוק.',
-      base: 1800, rate: 1.50, effect: { mult: 'price', per: 0.06 } },
+      base: 1800, rate: 1.50, effect: { mult: 'price', per: 0.06 },
+      readout: { key: 'price', label: 'מחיר מכירה', kind: 'mult' } },
 
     { id: 'bellows', name: 'מפוח הכבשן', icon: '🔥',
       desc: 'כל רמה מוסיפה 8% למהירות ההיתוך.',
       base: 3000, rate: 1.70, effect: { mult: 'forge', per: 0.08 },
+      readout: { key: 'forge', label: 'מהירות היתוך', kind: 'mult' },
       unlock: { unlocked: 'forge' } },
 
     { id: 'insulation', name: 'בידוד הכבשן', icon: '🧱',
       desc: 'כל רמה מפחיתה 4% מצריכת הדלק (מצטבר כפלית).',
       base: 5000, rate: 1.23, effect: { decay: 'fuel', per: 0.04 }, max: 60,
+      readout: { key: 'fuel', label: 'צריכת דלק', kind: 'mult', lower: true },
       unlock: { unlocked: 'forge' } },
 
     { id: 'crewTraining', name: 'אימון הצוות', icon: '👷',
       desc: 'כל רמה מוסיפה 8% לתפוקת כל אנשי הצוות.',
       base: 12e3, rate: 1.70, effect: { mult: 'crew', per: 0.08 },
+      readout: { key: 'crew', label: 'תפוקת צוות', kind: 'mult' },
       unlock: { unlocked: 'crew' } },
 
     { id: 'lanterns', name: 'פנסי מכרה', icon: '🏮',
       desc: 'כל רמה מוסיפה 10% לעוצמת הכרייה. אור זה חיים. (מקסימום 60 רמות)',
       base: 45e3, rate: 1.19, effect: { mult: 'power', per: 0.10 }, max: 60,
+      readout: { key: 'hitPower', label: 'עוצמת מכה', kind: 'num' },
       unlock: { depth: 950 } },
 
     { id: 'offlineRig', name: 'משמרת לילה', icon: '🌙',
       desc: 'כל רמה מוסיפה 8% ליעילות הצבירה בזמן שאתה לא במשחק.',
       base: 25e3, rate: 1.30, effect: { add: 'offline', per: 0.08 }, max: 40,
+      readout: { key: 'offline', label: 'יעילות לא־מקוונת', kind: 'pct' },
       unlock: { depth: 500 } },
 
     { id: 'compressor', name: 'מדחס עפרות', icon: '🗜',
       desc: 'כל רמה מוסיפה 12% לערך של כל עפרה גולמית שאתה מוכר.',
       base: 300e3, rate: 1.45, effect: { mult: 'orePrice', per: 0.12 }, max: 40,
+      readout: { key: 'orePrice', label: 'ערך עפרה גולמית', kind: 'mult' },
       unlock: { depth: 1600 } },
 
     { id: 'resonance', name: 'תהודה גבישית', icon: '🔮',
       desc: 'כל רמה מוסיפה 15% לעוצמת הכרייה. יקרה, ומוגבלת ל‑60 רמות.',
       base: 5e6, rate: 1.26, effect: { mult: 'power', per: 0.15 }, max: 60,
+      readout: { key: 'hitPower', label: 'עוצמת מכה', kind: 'num' },
       unlock: { depth: 2600 } }
   ];
 

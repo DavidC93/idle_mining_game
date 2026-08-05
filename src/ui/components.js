@@ -87,15 +87,23 @@
 
   function empty(text) { return el('div', 'empty', text); }
 
-  /* Coloured swatch + name + count, used all over the inventory UI. */
+  /* A drawn sprite for a resource, sized in CSS pixels. */
+  function resIcon(resId, size) {
+    var img = el('img', 'res-icon');
+    img.src = G.Sprites.url(resId, size);
+    img.width = size; img.height = size;
+    img.alt = '';
+    img.draggable = false;
+    return img;
+  }
+
+  /* Sprite + name + count, used all over the inventory UI. */
   function resChip(resId, qty, opts) {
     opts = opts || {};
     var r = G.res(resId);
     var node = el(opts.button ? 'button' : 'div', 'inv-item');
     if (opts.button) node.type = 'button';
-    var sw = el('span', 'inv-swatch');
-    sw.style.background = r.color;
-    node.appendChild(sw);
+    node.appendChild(resIcon(resId, opts.iconSize || 26));
     var t = el('div', 'inv-text');
     t.appendChild(el('b', null, r.name));
     t.appendChild(el('small', null, opts.subtitle !== undefined ? opts.subtitle : num.fmtCount(qty)));
@@ -115,7 +123,9 @@
       var have = s.inv[m.id] || 0;
       var short = have < m.n;
       var sp = el('span', short ? 'short' : null);
-      sp.textContent = G.res(m.id).name + ' ' + num.fmtCount(Math.min(have, m.n)) + '/' + num.fmtCount(m.n);
+      sp.appendChild(resIcon(m.id, 14));
+      sp.appendChild(document.createTextNode(
+        G.res(m.id).name + ' ' + num.fmtCount(Math.min(have, m.n)) + '/' + num.fmtCount(m.n)));
       w.appendChild(sp);
     }
     if (opts.fuel) {
@@ -129,6 +139,6 @@
 
   G.UIC = {
     el: el, frag: frag, clear: clear, card: card, buyRow: buyRow, bar: bar,
-    button: button, empty: empty, resChip: resChip, costList: costList
+    button: button, empty: empty, resChip: resChip, resIcon: resIcon, costList: costList
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

@@ -103,6 +103,7 @@
     this.drawFace(s, o);
     this.drawMiner(s, o, dt);
 
+    this.flushDrops(dt);
     this.parts.update(dt);
     this.parts.draw(ctx);
 
@@ -426,6 +427,23 @@
       ctx.stroke();
     }
 
+    /* Ore actually visible in the face, drawn from this stratum's own drop
+       table. It makes the loot table something you look at rather than
+       something you read in a panel. */
+    var seamCount = node.loot > 1 ? 4 : 3;
+    for (var q = 0; q < seamCount; q++) {
+      var pick = st.drops[Math.floor(rng.hash2(rock.seed % 613 + q, 401) * st.drops.length) % st.drops.length];
+      // Bias away from the middle: the miner stands dead centre now, and ore
+      // drawn behind him is ore the player never sees.
+      var side = (q % 2) ? 1 : -1;
+      var off = 0.20 + rng.hash2(q + 90, rock.seed % 233) * 0.26;
+      var ox = b.x0 + b.w * (0.5 + side * off);
+      var oy = floorY + 22 + rng.hash2(q + 17, rock.seed % 179) * (faceH - 44);
+      ctx.globalAlpha = 0.9;
+      G.Sprites.blit(ctx, pick.id, ox, oy, 24);
+      ctx.globalAlpha = 1;
+    }
+
     // Special nodes get an unmissable coloured seam.
     if (node.color) {
       var pulse = 0.55 + 0.45 * Math.sin(this.time * 4);
@@ -456,7 +474,7 @@
     ctx.restore();
 
     // HP bar sitting on the face.
-    var bw = b.w * 0.78, bx = (this.w - bw) / 2, by = floorY - 17;
+    var bw = b.w * 0.80, bx = (this.w - bw) / 2, by = floorY + faceH + 9;
     ctx.fillStyle = 'rgba(0,0,0,.72)';
     ctx.fillRect(bx - 1, by - 1, bw + 2, 12);
     ctx.fillStyle = node.color || '#d8b45c';
@@ -476,7 +494,7 @@
     var ctx = this.ctx;
     var b = this.shaftBounds();
     var y = this.minerScreenY();
-    var x = this.w / 2 + b.w * 0.18;
+    var x = this.w / 2;
 
     // Animation rate is clamped so a very fast player is still legible.
     var rate = Math.min(o.swingRate, G.BAL.maxVisualSwingRate);
@@ -700,13 +718,11 @@
     var st = G.Mining.stationStratum(s);
     var node = G.BAL.nodes[payload.type];
 
-    this.parts.chips(fx, fy, st.colors.light, payload.crit ? 16 : 8, payload.crit ? 1.7 : 1);
+    this.parts.chips(fx, fy, st.colors.light, payload.crit ? 14 : 7, payload.crit ? 1.7 : 1);
+    this.parts.chips(fx, fy, G.res(payload.drop.id).color, payload.crit ? 8 : 4, 1.2);
     this.parts.kick(payload.crit ? 7 : 2.2);
 
-    var r = G.res(payload.drop.id);
-    var label = '+' + num.fmtCount(payload.drop.n) + ' ' + r.name;
-    this.parts.text(fx, fy - 14, label, payload.drop.rare ? '#c48bff' : readable(r.color),
-                    { bold: payload.drop.rare, size: payload.drop.rare ? 15 : 13 });
+    this.queueDrop(payload.drop.id, payload.drop.n, payload.drop.rare);
 
     if (payload.drop.rare) {
       this.parts.burst(fx, fy - 10, '#c48bff', 12);
@@ -714,19 +730,70 @@
     }
     if (payload.crit) {
       this.parts.burst(fx, fy, '#ffd257', 18);
-      this.parts.text(fx, fy - 40, 'קריטי!', '#ffd257', { bold: true, size: 16 });
+      this.parts.text(fx, fy - 128, 'קריטי!', '#ffd257', { bold: true, size: 22, life: 0.9 });
     }
     if (payload.type !== 'normal') {
       this.parts.burst(fx, fy, node.color || '#fff', 20);
       this.parts.kick(6);
     }
     if (payload.gold > 0) {
-      this.parts.text(fx + 30, fy - 30, '+' + num.fmt(payload.gold) + ' זהב', '#f2c14e', { bold: true });
+      this.parts.text(fx, fy - 156, '+' + num.fmt(payload.gold) + ' זהב', '#f2c14e',
+                      { bold: true, size: 21 });
     }
+  };
+
+  /* Drop labels are batched.
+
+     At a few breaks per second one label per break is perfect. At a few hundred
+     it is an unreadable pile of overlapping text, which is where this game ends
+     up within an hour. Drops are accumulated per resource and flushed on a
+     fixed cadence, stacked in lanes so several resources stay legible. */
+  Scene.prototype.queueDrop = function (id, n, rare) {
+    var q = this.dropQueue || (this.dropQueue = {});
+    var e = q[id] || (q[id] = { n: 0, rare: false });
+    e.n += n;
+    if (rare) e.rare = true;
+  };
+
+  var DROP_FLUSH = 0.26;   // seconds between label batches
+  var DROP_LANES = 4;      // most labels shown at once
+
+  Scene.prototype.flushDrops = function (dt) {
+    this.dropTimer = (this.dropTimer || 0) + dt;
+    if (this.dropTimer < DROP_FLUSH) return;
+    this.dropTimer = 0;
+
+    var q = this.dropQueue;
+    if (!q) return;
+    var ids = Object.keys(q);
+    if (!ids.length) return;
+
+    // Most valuable first: if we can only show four, show the four that matter.
+    ids.sort(function (a, b) {
+      return G.res(b).value * q[b].n - G.res(a).value * q[a].n;
+    });
+
+    var fx = this.w / 2, fy = this.minerScreenY() + 24;
+    for (var i = 0; i < Math.min(ids.length, DROP_LANES); i++) {
+      var id = ids[i], e = q[id], r = G.res(id);
+      this.parts.text(fx, fy - 20 - i * 34,
+        '+' + num.fmtCount(e.n) + ' ' + r.name,
+        e.rare ? '#d9b0ff' : readable(r.color), {
+          bold: true,
+          size: e.rare ? 23 : 20,
+          icon: id,
+          iconSize: e.rare ? 32 : 27,
+          spread: 0,
+          vy: -26,
+          life: e.rare ? 1.9 : 1.5
+        });
+    }
+    this.dropQueue = {};
   };
 
   Scene.prototype.onPrestige = function () {
     this.parts.clear();
+    this.dropQueue = {};
     this.parts.flashScreen('#7fd8ff', 0.6);
     this.parts.kick(15);
     this.camY = 0;
