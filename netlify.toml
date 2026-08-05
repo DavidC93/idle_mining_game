@@ -1,0 +1,20 @@
+# Static site, no build step: the game runs from source exactly as it does
+# when you open index.html locally.
+[build]
+  publish = "."
+  command = ""
+
+# Script filenames are not fingerprinted, so nothing may be cached hard — a
+# stale src/*.js against a fresh index.html is a silently broken game. Assets
+# revalidate on every load; they are small and gzip well.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
