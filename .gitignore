@@ -3,4 +3,4 @@ package-lock.json
 *.log
 sim.txt
 sim4.txt
-shot*.png
+shot[0-9]*.png
