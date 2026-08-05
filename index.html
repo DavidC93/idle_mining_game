@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מעמקים — משחק כרייה אינסופי</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏️</text></svg>">
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ top bar ============ -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="brand-icon">⛏</span>
+      <div class="brand-text">
+        <b>מעמקים</b>
+        <small id="brand-sub">כורה בודד, אינסוף אדמה</small>
+      </div>
+    </div>
+
+    <div class="stat-strip" id="stat-strip">
+      <div class="stat" id="stat-gold" title="זהב">
+        <span class="stat-icon">🪙</span>
+        <span class="stat-body"><b id="v-gold">0</b><small id="v-goldrate">0/ש׳</small></span>
+      </div>
+      <div class="stat" id="stat-depth" title="עומק">
+        <span class="stat-icon">📏</span>
+        <span class="stat-body"><b id="v-depth">0 מ׳</b><small id="v-stratum">אדמה עליונה</small></span>
+      </div>
+      <div class="stat" id="stat-power" title="עוצמת כרייה">
+        <span class="stat-icon">💪</span>
+        <span class="stat-body"><b id="v-power">1</b><small id="v-rate">1.4 שבירות/ש׳</small></span>
+      </div>
+      <div class="stat" id="stat-cores" title="ליבות סלע" hidden>
+        <span class="stat-icon">💠</span>
+        <span class="stat-body"><b id="v-cores">0</b><small>ליבות</small></span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-settings" title="הגדרות" aria-label="הגדרות">⚙</button>
+    </div>
+  </header>
+
+  <!-- ============ main ============ -->
+  <main id="main">
+
+    <!-- the mine -->
+    <section id="stage">
+      <canvas id="mine-canvas"></canvas>
+
+      <div id="stage-overlay">
+        <div id="station-bar">
+          <label for="station-select">אזור עבודה</label>
+          <select id="station-select"></select>
+          <button id="btn-station-auto" class="chip chip-on" title="עקוב אוטומטית אחרי החזית">אוטומטי</button>
+        </div>
+
+        <div id="gate-banner" hidden>
+          <span class="gate-icon">🚧</span>
+          <div>
+            <b id="gate-title">מחסום סלע</b>
+            <small id="gate-sub"></small>
+          </div>
+        </div>
+      </div>
+
+      <div id="ticker" aria-live="polite"></div>
+    </section>
+
+    <!-- panels -->
+    <section id="side">
+      <nav id="tabs" role="tablist"></nav>
+      <div id="panel-scroll">
+        <div id="panels"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ modals ============ -->
+<div id="modal-root" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal" role="dialog" aria-modal="true">
+    <header><b id="modal-title"></b><button class="icon-btn" id="modal-close" aria-label="סגור">✕</button></header>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<!-- data -->
+<script src="src/util/num.js"></script>
+<script src="src/util/rng.js"></script>
+<script src="src/data/balance.js"></script>
+<script src="src/data/resources.js"></script>
+<script src="src/data/recipes.js"></script>
+<script src="src/data/upgrades.js"></script>
+<script src="src/data/talents.js"></script>
+<script src="src/data/achievements.js"></script>
+<script src="src/data/contracts.js"></script>
+<!-- systems -->
+<script src="src/systems/events.js"></script>
+<script src="src/systems/state.js"></script>
+<script src="src/systems/stats.js"></script>
+<script src="src/systems/mining.js"></script>
+<script src="src/systems/forge.js"></script>
+<script src="src/systems/market.js"></script>
+<script src="src/systems/shop.js"></script>
+<script src="src/systems/contracts.js"></script>
+<script src="src/systems/prestige.js"></script>
+<script src="src/systems/achievements.js"></script>
+<script src="src/systems/offline.js"></script>
+<script src="src/systems/game.js"></script>
+<!-- presentation -->
+<script src="src/render/particles.js"></script>
+<script src="src/render/scene.js"></script>
+<script src="src/ui/components.js"></script>
+<script src="src/ui/panels.js"></script>
+<script src="src/ui/ui.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

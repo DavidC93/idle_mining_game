@@ -1,0 +1,17 @@
+{
+  "name": "maamakim",
+  "version": "1.0.0",
+  "description": "מעמקים — an idle mining game. Vanilla JS, no build step.",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8971",
+    "validate": "node tools/validate.js",
+    "sim": "node tools/sim.js 6",
+    "sim:prestige": "node tools/sim.js 12 --prestige",
+    "smoke": "node tools/smoke.js 300",
+    "check": "node tools/validate.js && node tools/sim.js 2 && node tools/smoke.js 200"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  }
+}

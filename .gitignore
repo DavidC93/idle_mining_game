@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+*.log
+sim.txt
+sim4.txt
+shot*.png
