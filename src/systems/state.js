@@ -42,7 +42,8 @@
         gathered: {}, sold: {}
       },
 
-      settings: { sfx: true, particles: true, autoSave: true, buyAmount: 1 },
+      settings: { sfx: true, particles: true, autoSave: true, buyAmount: 1,
+                  haptics: true, invMode: 'sell' },
       log: [],
       lastTick: Date.now(),
       lastSave: Date.now(),

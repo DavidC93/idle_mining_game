@@ -4,31 +4,40 @@
    ============================================================ */
 
 :root {
-  --bg:        #0d0f14;
-  --bg-2:      #141821;
-  --panel:     #171c26;
-  --panel-2:   #1d2330;
-  --line:      #2a3140;
-  --line-soft: #222836;
+  /* Deep indigo rather than neutral grey: it lets the warm lamp/gold accents
+     read as warm, which flat greys never do. */
+  --bg:        #0b0d16;
+  --bg-2:      #121623;
+  --panel:     #181d2e;
+  --panel-2:   #212840;
+  --panel-3:   #2b3352;
+  --line:      #333d5e;
+  --line-soft: #262e49;
 
   --ink:       #e8ecf4;
   --ink-2:     #9aa5b8;
   --ink-3:     #626d80;
 
-  --gold:      #f2c14e;
-  --gold-dim:  #8a6c22;
-  --core:      #7fd8ff;
-  --ok:        #56d97f;
+  --gold:      #ffc93c;
+  --gold-2:    #ff9f1c;
+  --gold-dim:  #96701d;
+  --core:      #56ddff;
+  --core-2:    #3aa8ff;
+  --ok:        #46e08a;
+  --ok-2:      #16b06a;
   --warn:      #ffa23a;
-  --bad:       #ff5f6d;
-  --rare:      #c48bff;
+  --bad:       #ff5f7a;
+  --rare:      #c07bff;
+  --ember:     #ff7a29;
 
   --lamp:      #ffb960;
   --radius:    12px;
   --radius-sm: 8px;
   --tap:       44px;
 
-  --shadow: 0 10px 30px rgba(0,0,0,.45);
+  --shadow: 0 10px 30px rgba(0,0,0,.5);
+  --shadow-sm: 0 2px 0 rgba(0,0,0,.35);
+  --glow-gold: 0 0 18px rgba(255,201,60,.35);
   --font: 'Segoe UI', 'Rubik', 'Heebo', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -48,11 +57,37 @@ html, body {
   font-size: 15px;
   overflow: hidden;
   -webkit-text-size-adjust: 100%;
+
+  /* Touch hygiene. Without these a phone gives you the grey tap flash, a
+     300ms click delay, text selection on long-press, and pull-to-refresh
+     that silently reloads the game mid-session. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
+/* Anything the player might actually want to copy stays selectable. */
+#modal-body textarea, #modal-body p, .kv { user-select: text; -webkit-user-select: text; }
+
+#app { padding-bottom: env(safe-area-inset-bottom); }
+
 button, select, input { font-family: inherit; font-size: inherit; color: inherit; }
-button { cursor: pointer; border: 0; background: none; }
+button {
+  cursor: pointer; border: 0; background: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 button:disabled { cursor: not-allowed; }
+
+/* Press feedback on every control. A touchscreen has no hover, so the press
+   state is the only confirmation the player gets that the tap registered. */
+button:not(:disabled):active { transform: scale(.965); }
+.row:not(:disabled):active,
+.inv-item:not(:disabled):active { transform: scale(.985); filter: brightness(1.25); }
+.tab:active { filter: brightness(1.3); }
 
 #app { display: flex; flex-direction: column; height: 100%; }
 
@@ -60,11 +95,11 @@ button:disabled { cursor: not-allowed; }
 
 #topbar {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 14px;
-  padding: 8px 14px;
-  background: linear-gradient(180deg, #12161e, #0e1117);
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+  background: linear-gradient(180deg, #1b2136, #10131f);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 2px 14px rgba(0,0,0,.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,.55);
   z-index: 20;
 }
 
@@ -87,19 +122,27 @@ button:disabled { cursor: not-allowed; }
 
 .stat {
   display: flex; align-items: center; gap: 8px;
-  padding: 5px 12px;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
+  padding: 6px 13px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--shadow-sm);
   white-space: nowrap;
 }
+#stat-gold  { border-color: rgba(255,201,60,.4);  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(255,201,60,.13); }
+#stat-cores { border-color: rgba(86,221,255,.42); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(86,221,255,.16); }
 .stat-icon { font-size: 16px; opacity: .9; }
 .stat-body { display: flex; flex-direction: column; line-height: 1.2; }
 .stat-body b { font-size: 15px; font-variant-numeric: tabular-nums; }
 .stat-body small { font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
-#stat-gold b { color: var(--gold); }
-#stat-cores b { color: var(--core); }
+#stat-gold b {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(255,201,60,.45);
+}
+#stat-cores b { color: var(--core); text-shadow: 0 0 12px rgba(86,221,255,.45); }
+#stat-depth b { color: #cfd8ff; }
+#stat-power b { color: #ffd9a0; }
 
 /* a quick pulse when a stat jumps */
 .stat.bump { animation: bump .35s ease; }
@@ -138,7 +181,12 @@ button:disabled { cursor: not-allowed; }
   background: #07090d;
   overflow: hidden;
 }
-#mine-canvas { display: block; width: 100%; height: 100%; }
+#mine-canvas {
+  display: block; width: 100%; height: 100%;
+  /* The stage is a tap target, never a scroll surface: without this a tap that
+     drifts a pixel is treated as a pan gesture and the swing is swallowed. */
+  touch-action: none;
+}
 
 #stage-overlay {
   position: absolute; inset: 0;
@@ -177,6 +225,22 @@ button:disabled { cursor: not-allowed; }
   transition: .15s;
 }
 .chip.chip-on { background: rgba(242,193,78,.16); border-color: var(--gold-dim); color: var(--gold); }
+
+/* Names whatever has taken over the stage (the forge, today). */
+#stage-title {
+  pointer-events: none;
+  align-self: center;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px;
+  background: rgba(12,10,18,.72);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,140,60,.35);
+  border-radius: 999px;
+  box-shadow: 0 0 20px rgba(255,140,60,.18);
+  font-size: 13px;
+}
+#stage-title span { font-size: 16px; }
+#stage-title b { color: #ffd0a0; letter-spacing: .4px; }
 
 #gate-banner {
   pointer-events: auto;
@@ -244,7 +308,11 @@ button:disabled { cursor: not-allowed; }
   transition: .15s;
 }
 .tab:hover { color: var(--ink-2); background: rgba(255,255,255,.03); }
-.tab.active { color: var(--ink); background: var(--panel); box-shadow: inset 0 -2px 0 var(--gold); }
+.tab.active {
+  color: #fff;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  box-shadow: inset 0 -3px 0 var(--gold), 0 -2px 12px rgba(255,201,60,.16);
+}
 .tab .dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--ok);
@@ -261,18 +329,28 @@ button:disabled { cursor: not-allowed; }
 /* ============ generic panel pieces ============ */
 
 .card {
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
+  position: relative;
+  background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 46%);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+}
+/* A hairline of colour along the top edge — cheap, and it stops a column of
+   cards reading as one undifferentiated grey slab. */
+.card::before {
+  content: ''; position: absolute; inset-inline: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: .5;
 }
 .card > header {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 9px 12px;
-  background: var(--panel-2);
+  padding: 10px 13px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), transparent);
   border-bottom: 1px solid var(--line-soft);
   font-size: 12.5px;
 }
+.card-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .card > header b { font-size: 13px; }
 .card > header small { color: var(--ink-3); font-size: 11px; }
 .card-body { padding: 10px 12px; }
@@ -302,31 +380,86 @@ button:disabled { cursor: not-allowed; }
 
 /* ---- buy rows (upgrades, unlocks, crew, talents) ---- */
 
+.row-wrap { display: flex; gap: 6px; align-items: stretch; }
+.row-wrap + .row-wrap { margin-top: 7px; }
+
 .row {
+  flex: 1 1 auto;
   display: flex; align-items: center; gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--panel-2);
-  border: 1px solid transparent;
+  min-width: 0;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line-soft);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), var(--shadow-sm);
   text-align: start;
-  transition: .12s;
+  transition: transform .1s, filter .1s, border-color .15s, box-shadow .15s;
   min-height: var(--tap);
 }
-.row + .row { margin-top: 6px; }
-.row:not(.locked):hover { border-color: var(--line); background: #222a38; }
-.row.affordable { border-color: rgba(86,217,127,.35); }
-.row.affordable:hover { border-color: var(--ok); }
-.row.locked { opacity: .45; }
-.row.maxed { opacity: .7; }
+.row + .row { margin-top: 7px; }
+.row:not(.locked):hover { border-color: var(--line); }
+.row.affordable {
+  border-color: rgba(70,224,138,.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 14px rgba(70,224,138,.12);
+}
+.row.affordable:hover { border-color: var(--ok); box-shadow: 0 0 18px rgba(70,224,138,.22); }
+.row.locked { opacity: .42; }
+.row.maxed { opacity: .72; }
+
+/* The secondary action beside a row (auto-smelt). A real target, not a hint. */
+.row-toggle {
+  flex: 0 0 auto;
+  width: 54px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  transition: .14s;
+}
+.row-toggle small { font-size: 9.5px; }
+.row-toggle-icon { font-size: 17px; line-height: 1; }
+.row-toggle:hover { border-color: var(--line); color: var(--ink-2); }
+.row-toggle.on {
+  background: linear-gradient(180deg, rgba(70,224,138,.28), rgba(70,224,138,.12));
+  border-color: var(--ok);
+  color: #b6ffd6;
+  box-shadow: 0 0 14px rgba(70,224,138,.3);
+}
+.row-toggle.on .row-toggle-icon { animation: spin 2.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Segmented mode switch — the touch replacement for Shift+click. */
+.segmented {
+  display: inline-flex;
+  background: #0e1220;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 2px;
+}
+.seg {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ink-3);
+  transition: .14s;
+  min-height: 30px;
+}
+.seg.on {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #241701;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
 
 .row-icon {
   flex: 0 0 auto;
-  width: 32px; height: 32px;
+  width: 36px; height: 36px;
   display: grid; place-items: center;
-  border-radius: var(--radius-sm);
-  background: #10141c;
-  font-size: 17px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 35% 30%, #2c3454, #10141f);
+  border: 1px solid rgba(255,255,255,.06);
+  font-size: 18px;
 }
 .row-main { flex: 1 1 auto; min-width: 0; }
 .row-name { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
@@ -385,14 +518,16 @@ button:disabled { cursor: not-allowed; }
   gap: 6px;
 }
 .inv-item {
-  display: flex; align-items: center; gap: 7px;
-  padding: 7px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--panel-2);
-  border: 1px solid transparent;
-  transition: .12s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line-soft);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  transition: transform .1s, filter .1s, border-color .15s;
   text-align: start;
   min-width: 0;
+  min-height: 46px;
 }
 .inv-item:hover { border-color: var(--line); }
 .res-icon {
@@ -412,7 +547,30 @@ button:disabled { cursor: not-allowed; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inv-text small { font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
-.inv-item.selling { outline: 1px solid var(--ok); }
+.inv-item.selling {
+  border-color: var(--ok);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 12px rgba(70,224,138,.3);
+}
+.inv-item.selling::after {
+  content: '⟳'; margin-inline-start: auto; color: var(--ok); font-size: 13px;
+}
+
+/* at-a-glance status chips (forge fuel / slots / speed) */
+.forge-status { display: flex; gap: 6px; }
+.stat-chip {
+  flex: 1 1 0;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.stat-chip-icon { font-size: 16px; }
+.stat-chip b { display: block; font-size: 13px; font-variant-numeric: tabular-nums; }
+.stat-chip small { display: block; font-size: 10px; color: var(--ink-3); }
+.stat-chip.bad { border-color: rgba(255,95,122,.5); }
+.stat-chip.bad b { color: var(--bad); }
 
 /* ---- forge ---- */
 .slot {
@@ -448,19 +606,25 @@ button:disabled { cursor: not-allowed; }
 
 /* ---- buttons ---- */
 .btn {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--panel-2);
+  padding: 9px 15px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
   border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), var(--shadow-sm);
   color: var(--ink);
   font-size: 12.5px;
+  font-weight: 500;
   transition: .14s;
-  min-height: 36px;
+  min-height: 38px;
 }
-.btn:hover:not(:disabled) { background: #252d3c; border-color: #38445a; }
-.btn:disabled { opacity: .4; }
-.btn.primary { background: linear-gradient(180deg, #c9982f, #a97c1e); border-color: #d8ab45; color: #1a1204; font-weight: 600; }
-.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #e0ac38, #bd8b22); }
+.btn:hover:not(:disabled) { filter: brightness(1.18); border-color: #47547a; }
+.btn:disabled { opacity: .38; box-shadow: none; }
+.btn.primary {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  border-color: #ffd977; color: #2a1a01; font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 3px 0 #8a5c11, var(--glow-gold);
+}
+.btn.primary:active:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 0 #8a5c11; }
 .btn.danger { border-color: #6b2830; color: #ff8d97; }
 .btn.danger:hover:not(:disabled) { background: #2a1418; }
 .btn.wide { width: 100%; }
@@ -528,7 +692,7 @@ button:disabled { cursor: not-allowed; }
 /* Bottom-right of the window: that is over the mine stage in this RTL layout,
    clear of the panel column, the station selector and the ticker. */
 #toasts {
-  position: fixed; right: 52px; bottom: 108px;
+  position: fixed; right: 52px; bottom: 132px;
   z-index: 50; display: flex; flex-direction: column; gap: 7px;
   pointer-events: none; max-width: min(320px, 62vw);
 }
@@ -557,25 +721,77 @@ button:disabled { cursor: not-allowed; }
 /* ============ responsive ============ */
 
 @media (max-width: 900px) {
-  #main { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 38vh) 1fr; }
+  #main { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 42vh) 1fr; }
+
+  /* Tab bar to the bottom of the screen, where thumbs are. column-reverse puts
+     #tabs after #panel-scroll without touching the DOM order, so focus and
+     reading order stay correct. */
+  #side { flex-direction: column-reverse; }
+  #tabs {
+    border-bottom: 0;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, #141a2b, #0e1220);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    justify-content: center;
+    box-shadow: 0 -6px 20px rgba(0,0,0,.4);
+  }
+  .tab {
+    flex: 1 1 26%;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+    padding: 7px 4px;
+    border-radius: 10px;
+    font-size: 11px;
+    min-height: 52px;
+  }
+  .tab.active { box-shadow: inset 0 0 0 1px var(--gold-dim), 0 0 12px rgba(255,201,60,.2); }
+  .tab .dot { position: absolute; top: 5px; inset-inline-end: 8px; }
+  .tab > span:first-child { font-size: 17px; }
   /* On a phone the mine is only the top strip, so full-size toasts stacked
      four deep cover the entire thing. Compact, capped at two (see UI.toast),
      and pinned to the top edge. */
-  #toasts { top: 54px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 5px; }
-  .toast { padding: 6px 10px; font-size: 11.5px; }
-  .toast .t-icon { font-size: 15px; }
+  /* One compact line each, translucent, capped at two (see UI.toast). On a
+     42vh stage anything bigger hides the thing it is reporting on. */
+  #toasts { top: 52px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 4px; }
+  .toast {
+    padding: 5px 10px; font-size: 11px; gap: 7px;
+    background: rgba(20,25,40,.82);
+    backdrop-filter: blur(6px);
+  }
+  .toast .t-icon { font-size: 14px; }
+  .toast b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .toast small { display: none; }
   #side { border-inline-start: 0; border-top: 1px solid var(--line); }
   .brand-text { display: none; }
-  #topbar { padding: 6px 10px; gap: 10px; }
-  .stat { padding: 4px 9px; }
-  .stat-body b { font-size: 13.5px; }
+  #topbar { padding: calc(6px + env(safe-area-inset-top)) 8px 6px; gap: 7px; }
+  /* Compress to fit instead of scrolling: a stat sliced in half by the screen
+     edge looks like a rendering bug. */
+  .stat-strip { gap: 5px; overflow: visible; }
+  .stat { padding: 4px 9px; gap: 5px; min-width: 0; flex: 1 1 0; justify-content: center; }
+  .stat-icon { font-size: 14px; }
+  .stat-body { min-width: 0; }
+  .stat-body b { font-size: 13px; }
+  .stat-body small { font-size: 9.5px; }
+  .brand { display: none; }
 }
 
 @media (max-width: 560px) {
   :root { font-size: 14px; }
-  #ticker { max-height: 60px; }
-  .inv-grid { grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); }
+  /* The ticker duplicates what the toasts and the floating drop labels already
+     say, and on a phone it sits directly on top of the rock's HP bar. */
+  #ticker { display: none; }
+  .inv-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  #panels { padding: 10px; gap: 10px; }
+  /* Comfortable thumb targets everywhere. */
+  .row { min-height: 56px; padding: 11px; }
+  .row-toggle { width: 60px; }
+  .inv-item { min-height: 54px; }
+  .btn { min-height: 42px; }
+  .seg { min-height: 34px; padding: 6px 13px; font-size: 11.5px; }
+  .row-desc { -webkit-line-clamp: 3; }
+  #station-bar { font-size: 12px; padding: 5px 9px; }
+  #station-bar select { max-width: 150px; padding: 6px 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

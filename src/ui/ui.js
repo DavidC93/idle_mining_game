@@ -17,9 +17,15 @@
     lastGoldShown: 0,
     seenTabs: {},
 
-    init: function (game, scene) {
+    init: function (game, stage) {
       this.game = game;
-      this.scene = scene;
+      this.stage = stage;
+      this.scene = stage.mine();
+      // Whatever is already open on load is not "new" — otherwise every tab
+      // wears an attention dot from the first frame and the dot means nothing.
+      for (var i = 0; i < G.PANELS.length; i++) {
+        if (G.PANELS[i].visible(game)) this.seenTabs[G.PANELS[i].id] = true;
+      }
       this.buildTabs();
       this.bindTopbar();
       this.bindStation();
@@ -57,6 +63,8 @@
         t.addEventListener('click', function () {
           self.activeTab = p.id;
           self.seenTabs[p.id] = true;
+          self.haptic(10);
+          self.applyStageView();
           self.buildTabs(true);
           self.renderPanel();
         });
@@ -82,6 +90,45 @@
     },
 
     refresh: function () { this.dirty = true; },
+
+    /* A panel with a `stageView` takes over the main view when selected.
+       Everything else falls back to the mine. */
+    applyStageView: function () {
+      var want = 'mine';
+      for (var i = 0; i < G.PANELS.length; i++) {
+        var p = G.PANELS[i];
+        if (p.id === this.activeTab && p.stageView && p.visible(this.game)) want = p.stageView;
+      }
+      if (!this.stage.has(want)) want = 'mine';
+      this.stage.set(want);
+      this.syncStageChrome();
+    },
+
+    /* Overlay controls belong to the mine; hide them when the stage is showing
+       something else, and name whatever has taken over. */
+    syncStageChrome: function () {
+      var onMine = this.stage.view === 'mine';
+      var title = document.getElementById('stage-title');
+      document.getElementById('station-bar').hidden = !onMine;
+      if (!onMine) document.getElementById('gate-banner').hidden = true;
+
+      document.getElementById('ticker').hidden = !onMine;
+      if (onMine) { title.hidden = true; return; }
+      var panel = null;
+      for (var i = 0; i < G.PANELS.length; i++) {
+        if (G.PANELS[i].stageView === this.stage.view) panel = G.PANELS[i];
+      }
+      title.hidden = false;
+      document.getElementById('stage-title-icon').textContent = panel ? panel.icon : '•';
+      document.getElementById('stage-title-text').textContent = panel ? panel.label : '';
+    },
+
+    /* Short buzz on meaningful taps. Silently absent on desktop and on iOS
+       Safari, which is fine — it is reinforcement, never information. */
+    haptic: function (ms) {
+      if (!this.game || !this.game.s.settings.haptics) return;
+      if (navigator.vibrate) { try { navigator.vibrate(ms || 8); } catch (e) { /* ignore */ } }
+    },
 
     /* ---- per-frame top bar ---------------------------------------------- */
 
@@ -111,10 +158,11 @@
           // under the user's finger.
           this.dirty = true;
         } else {
-          this.panelTimer = 0;
+            this.panelTimer = 0;
           this.dirty = false;
           this.buildTabs();
           this.renderPanel();
+          this.applyStageView();
         }
       }
     },
@@ -136,6 +184,7 @@
        the game: without it a blocked player just sees the depth number stop. */
     updateGate: function (s) {
       var banner = document.getElementById('gate-banner');
+      if (this.stage.view !== 'mine') { banner.hidden = true; return; }
       var cap = G.Stats.depthCap(s);
       if (!isFinite(cap) || s.frontier < cap - 0.5) { banner.hidden = true; return; }
 
@@ -179,6 +228,22 @@
       window.addEventListener('pointerup', release, true);
       window.addEventListener('pointercancel', release, true);
       window.addEventListener('blur', release);
+
+      /* Touch hardening.
+         - iOS fires a synthetic double-tap zoom unless gestures are cancelled.
+         - Pull-to-refresh at the top of the panel list reloads the game, which
+           reads as "my progress vanished" even though the save survives. */
+      document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+      document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+      document.body.addEventListener('touchmove', function (e) {
+        if (e.touches.length > 1) e.preventDefault();     // pinch zoom
+      }, { passive: false });
+
+      /* Buzz on every successful purchase, wherever it came from. */
+      G.bus.on('buy', function () { self.haptic(12); });
+      G.bus.on('pickUpgrade', function () { self.haptic(30); });
+      G.bus.on('achievement', function () { self.haptic(24); });
+      G.bus.on('prestige', function () { self.haptic(60); });
     },
 
     bindStation: function () {
@@ -220,7 +285,8 @@
       var auto = document.getElementById('btn-station-auto');
       auto.classList.toggle('chip-on', !!s.stationAuto);
       // With only one layer open there is nothing to choose between.
-      document.getElementById('station-bar').style.display = maxIdx > 0 ? '' : 'none';
+      document.getElementById('station-bar').style.display =
+        (maxIdx > 0 && this.stage.view === 'mine') ? '' : 'none';
     },
 
     /* ---- ticker + toasts -------------------------------------------------- */
@@ -281,7 +347,9 @@
           if (ns) {
             self.game.s = ns;
             self.game.refresh();
-            self.scene.onPrestige();
+            G.Stage.mine().onPrestige();
+            self.stage.set('mine');
+            self.syncStageChrome();
             self.activeTab = 'prestige';
             self.toast('💠', 'המכרה קרס', '+' + num.fmt(gain) + ' ליבות סלע', 'core');
             self.log('המכרה התמוטט. ' + num.fmt(gain) + ' ליבות סלע נאספו מההריסות.', 'big');
@@ -331,6 +399,16 @@
         ta.placeholder = 'הדבק כאן קוד שמירה כדי לייבא, או לחץ "ייצוא".';
         body.appendChild(ta);
 
+        body.appendChild(el('h4', null, 'מגע'));
+        var hap = U.button(
+          (s.settings.haptics ? '✅' : '⬜') + ' רטט במגע', 'sm', function () {
+            s.settings.haptics = !s.settings.haptics;
+            if (s.settings.haptics) self.haptic(20);
+            self.closeModal(); self.openSettings();
+          });
+        hap.style.marginBottom = '12px';
+        body.appendChild(hap);
+
         body.appendChild(el('h4', null, 'איך משחקים'));
         var ul = el('ul');
         [
@@ -339,6 +417,8 @@
           'כל שכבה חסומה במחסום שדורש מכוש מדרגה מסוימת — זה היעד הבא שלך.',
           'אפשר לחזור לשכבות רדודות (בורר "אזור עבודה") כדי לאסוף חומרים ישנים.',
           'צוות עובד ברקע בשכבה שהצבת אותו בה, גם כשאתה כורה במקום אחר.',
+          'כפתור ⟳ ליד מתכון = התכה אוטומטית. במחסן יש מתג "מכירה / אוטומטי".',
+          'לחיצה על תצוגת המכרה = הנפה נוספת ביד.',
           'כשמגיעים מספיק עמוק — מפוצצים הכל ומתחילים מחדש חזק יותר.'
         ].forEach(function (t) { ul.appendChild(el('li', null, t)); });
         body.appendChild(ul);
@@ -424,8 +504,8 @@
       G.bus.on('pickUpgrade', function (p) {
         self.toast('⛏', p.pick.name, 'עוצמה ' + num.fmt(p.pick.power), 'ach');
         self.log('חישלת ' + p.pick.name + '!', 'big');
-        self.scene.parts.flashScreen('#f2c14e', 0.35);
-        self.scene.parts.kick(9);
+        G.Stage.mine().parts.flashScreen('#f2c14e', 0.35);
+        G.Stage.mine().parts.kick(9);
         self.refresh();
       });
 

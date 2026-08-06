@@ -66,69 +66,72 @@
     {
       id: 'topsoil', name: 'אדמה עליונה', minDepth: 0, gate: 0, hardness: 1,
       sky: true,
-      colors: { base: '#7a5638', dark: '#5d3f28', light: '#966b46', accent: '#4a3220' },
+      colors: { base: '#8a5f34', dark: '#61401f', light: '#a87a45', accent: '#42290f' },
       drops: [{ id: 'dirt', w: 60 }, { id: 'clay', w: 28 }, { id: 'pebble', w: 12 }]
     },
     {
       id: 'gravel', name: 'שכבת חצץ', minDepth: 60, gate: 1, hardness: 1.6,
-      colors: { base: '#6d6a63', dark: '#4e4c47', light: '#8b877e', accent: '#3a3835' },
+      colors: { base: '#6f6a78', dark: '#4c4856', light: '#918ca0', accent: '#332f3c' },
       drops: [{ id: 'gravel', w: 55 }, { id: 'flint', w: 30 }, { id: 'limestone', w: 15 }]
     },
     {
       id: 'sediment', name: 'סלע משקע', minDepth: 200, gate: 2, hardness: 2.4,
-      colors: { base: '#5f6068', dark: '#43444b', light: '#7c7e88', accent: '#2f3036' },
+      glow: '#5a8fc7',
+      colors: { base: '#4f6478', dark: '#354657', light: '#6f8aa3', accent: '#243240' },
       drops: [{ id: 'stone', w: 50 }, { id: 'coal', w: 34 }, { id: 'copperOre', w: 16 }]
     },
     {
       id: 'igneous', name: 'סלע יסוד', minDepth: 500, gate: 3, hardness: 3.4,
-      colors: { base: '#57505c', dark: '#3d3841', light: '#736b79', accent: '#2b2730' },
+      colors: { base: '#63465f', dark: '#452f43', light: '#83627e', accent: '#2e1e2d' },
       drops: [{ id: 'granite', w: 46 }, { id: 'tinOre', w: 32 }, { id: 'ironOre', w: 22 },
               { id: 'coal', w: 14 }, { id: 'copperOre', w: 12 }]
     },
     {
       id: 'deeprock', name: 'סלע עמוק', minDepth: 950, gate: 5, hardness: 4.6,
-      colors: { base: '#464a5c', dark: '#313441', light: '#5f6478', accent: '#232634' },
+      glow: '#4d8ae0',
+      colors: { base: '#38547a', dark: '#243a58', light: '#4e73a0', accent: '#182741' },
       drops: [{ id: 'quartz', w: 42 }, { id: 'silverOre', w: 30 }, { id: 'nickelOre', w: 20 },
               { id: 'ironOre', w: 16 }, { id: 'coal', w: 10 }]
     },
     {
       id: 'crystal', name: 'מערות גביש', minDepth: 1600, gate: 7, hardness: 6,
       glow: '#a06bff',
-      colors: { base: '#3f3358', dark: '#2b2340', light: '#584676', accent: '#1e1830' },
+      colors: { base: '#4b3583', dark: '#32215d', light: '#6a4cb0', accent: '#22164a' },
       drops: [{ id: 'amethyst', w: 40 }, { id: 'goldOre', w: 28 }, { id: 'emerald', w: 18 },
               { id: 'quartz', w: 18 }, { id: 'silverOre', w: 14 }, { id: 'coal', w: 8 }]
     },
     {
       id: 'magma', name: 'מדף המגמה', minDepth: 2600, gate: 9, hardness: 8,
       glow: '#ff6a2a',
-      colors: { base: '#4a2a24', dark: '#331c18', light: '#6b3d33', accent: '#22110e' },
+      colors: { base: '#6b2a22', dark: '#471712', light: '#95412f', accent: '#2c0d0a' },
       drops: [{ id: 'obsidian', w: 40 }, { id: 'ruby', w: 26 }, { id: 'platinumOre', w: 18 },
               { id: 'goldOre', w: 16 }]
     },
     {
       id: 'abyss', name: 'שכבות התהום', minDepth: 4000, gate: 11, hardness: 11,
-      colors: { base: '#22303a', dark: '#152028', light: '#334654', accent: '#0d1519' },
+      glow: '#31d6c0',
+      colors: { base: '#1d4a55', dark: '#0f313a', light: '#2c6b78', accent: '#08222a' },
       drops: [{ id: 'cobaltOre', w: 38 }, { id: 'diamond', w: 26 }, { id: 'mithrilOre', w: 18 },
               { id: 'obsidian', w: 18 }]
     },
     {
       id: 'void', name: 'בקע הריק', minDepth: 6000, gate: 13, hardness: 15,
       glow: '#5b4cff',
-      colors: { base: '#1c1836', dark: '#110e22', light: '#2e2854', accent: '#080615' },
+      colors: { base: '#2a1d63', dark: '#180f42', light: '#3f2d90', accent: '#0e0830' },
       drops: [{ id: 'sapphire', w: 36 }, { id: 'titaniumOre', w: 26 }, { id: 'voidstone', w: 20 },
               { id: 'mithrilOre', w: 18 }]
     },
     {
       id: 'mantle', name: 'ליבת המעטפת', minDepth: 8500, gate: 15, hardness: 21,
       glow: '#ff9c2a',
-      colors: { base: '#4d2413', dark: '#33160b', light: '#7a3c1d', accent: '#1f0d06' },
+      colors: { base: '#7a3212', dark: '#511c07', light: '#a8501f', accent: '#340f04' },
       drops: [{ id: 'magmarite', w: 36 }, { id: 'adamantiteOre', w: 26 }, { id: 'starmetal', w: 20 },
               { id: 'titaniumOre', w: 18 }]
     },
     {
       id: 'heart', name: 'לב סלע האם', minDepth: 12000, gate: 17, hardness: 30,
       glow: '#8ff0ff',
-      colors: { base: '#123040', dark: '#0a1e2a', light: '#1e4a60', accent: '#051218' },
+      colors: { base: '#0f4a63', dark: '#073246', light: '#186f90', accent: '#031f2e' },
       drops: [{ id: 'aetheriumOre', w: 38 }, { id: 'primordialDust', w: 26 },
               { id: 'singularityShard', w: 16 }, { id: 'starmetal', w: 20 }]
     }

@@ -36,15 +36,25 @@
     return c;
   }
 
-  /* The workhorse: an icon + name + description + cost row that is also a button. */
+  /* The workhorse: an icon + name + description + cost row that is also a button.
+
+     `toggle` adds a second, independent button beside the main one — used for
+     things like "keep smelting this". A nested <button> is invalid HTML and
+     swallows the outer click, so the row is a flex wrapper holding two
+     siblings rather than one button containing another. */
   function buyRow(cfg) {
+    var wrap = el('div', 'row-wrap');
     var b = el('button', 'row');
     b.type = 'button';
     if (cfg.locked) b.classList.add('locked');
     if (cfg.maxed) b.classList.add('maxed');
     if (cfg.affordable && !cfg.maxed && !cfg.locked) b.classList.add('affordable');
 
-    b.appendChild(el('span', 'row-icon', cfg.icon || '•'));
+    // icon may be an emoji string or a rendered node (a resource sprite)
+    var iconBox = el('span', 'row-icon');
+    if (cfg.icon && cfg.icon.nodeType) iconBox.appendChild(cfg.icon);
+    else iconBox.textContent = cfg.icon || '•';
+    b.appendChild(iconBox);
 
     var main = el('div', 'row-main');
     var nameRow = el('div', 'row-name');
@@ -66,7 +76,35 @@
 
     if (cfg.onClick) b.addEventListener('click', cfg.onClick);
     if (cfg.disabled) b.disabled = true;
-    return b;
+    wrap.appendChild(b);
+
+    if (cfg.toggle) {
+      var t = el('button', 'row-toggle' + (cfg.toggle.active ? ' on' : ''));
+      t.type = 'button';
+      t.appendChild(el('span', 'row-toggle-icon', cfg.toggle.icon || '⟳'));
+      if (cfg.toggle.label) t.appendChild(el('small', null, cfg.toggle.label));
+      t.title = cfg.toggle.title || '';
+      t.setAttribute('aria-pressed', cfg.toggle.active ? 'true' : 'false');
+      if (cfg.toggle.disabled) t.disabled = true;
+      t.addEventListener('click', cfg.toggle.onClick);
+      wrap.appendChild(t);
+    }
+    return wrap;
+  }
+
+  /* A segmented control: [ label | label ]. Used where a mode switch beats a
+     modifier key — Shift+click is unreachable on a touchscreen. */
+  function segmented(options, activeValue, onPick) {
+    var w = el('div', 'segmented');
+    options.forEach(function (opt) {
+      var b = el('button', 'seg' + (opt.value === activeValue ? ' on' : ''));
+      b.type = 'button';
+      b.textContent = opt.label;
+      if (opt.title) b.title = opt.title;
+      b.addEventListener('click', function () { onPick(opt.value); });
+      w.appendChild(b);
+    });
+    return w;
   }
 
   function bar(frac, cls) {
@@ -139,6 +177,7 @@
 
   G.UIC = {
     el: el, frag: frag, clear: clear, card: card, buyRow: buyRow, bar: bar,
-    button: button, empty: empty, resChip: resChip, resIcon: resIcon, costList: costList
+    button: button, empty: empty, resChip: resChip, resIcon: resIcon, costList: costList,
+    segmented: segmented
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

@@ -131,12 +131,24 @@
         if (got > 0) G.UI.toast('🪙', 'נמכר', num.fmt(got) + ' זהב');
         game.refresh(); G.UI.refresh();
       });
+      var header = el('div', 'card-actions');
+      if (s.unlocks.autoSell) {
+        header.appendChild(U.segmented([
+          { value: 'sell', label: 'מכירה', title: 'הקשה מוכרת את כל הערימה' },
+          { value: 'auto', label: '⟳ אוטומטי', title: 'הקשה מסמנת משאב למכירה אוטומטית' }
+        ], s.settings.invMode || 'sell', function (v) {
+          s.settings.invMode = v; G.UI.haptic(10); G.UI.refresh();
+        }));
+      }
+      header.appendChild(sellAllBtn);
+
       var ic = U.card('המחסן', ids.length ? num.fmt(G.Market.inventoryValue(s, o)) + ' ז׳ בשווי' : '',
-                      { right: sellAllBtn, tight: true });
+                      { right: header, tight: true });
       if (!ids.length) {
         ic.body.appendChild(U.empty('המחסן ריק. הכורה עובד — תן לו רגע.'));
       } else {
         var grid = el('div', 'inv-grid');
+        var autoMode = s.unlocks.autoSell && s.settings.invMode === 'auto';
         for (i = 0; i < ids.length; i++) {
           (function (id) {
             var unit = G.Market.unitPrice(s, id, o);
@@ -144,14 +156,22 @@
             grid.appendChild(U.resChip(id, s.inv[id], {
               button: true,
               subtitle: num.fmtCount(s.inv[id]) + ' · ' + num.fmt(unit) + 'ז׳',
-              title: 'לחץ למכירה' + (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
+              title: (autoMode ? 'הקשה מסמנת למכירה אוטומטית' : 'הקשה מוכרת') +
+                     (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
               selling: !!s.autoSell[id],
-              onClick: function (ev) {
-                if (ev.shiftKey && s.unlocks.autoSell) {
+              onClick: function () {
+                if (autoMode) {
                   s.autoSell[id] = !s.autoSell[id];
+                  G.UI.haptic(14);
+                  G.UI.toast(s.autoSell[id] ? '⟳' : '✋',
+                             G.res(id).name,
+                             s.autoSell[id] ? 'יימכר אוטומטית' : 'מכירה אוטומטית בוטלה');
                 } else {
                   var got = G.Market.sell(s, id, s.inv[id], o);
-                  if (got > 0) G.UI.toast('🪙', G.res(id).name, '+' + num.fmt(got) + ' זהב');
+                  if (got > 0) {
+                    G.UI.haptic(12);
+                    G.UI.toast('🪙', G.res(id).name, '+' + num.fmt(got) + ' זהב');
+                  }
                 }
                 game.refresh(); G.UI.refresh();
               }
@@ -159,16 +179,22 @@
           })(ids[i]);
         }
         ic.body.appendChild(grid);
-        if (s.unlocks.autoSell) {
-          ic.body.appendChild(el('div', 'muted', 'Shift+לחיצה מסמן משאב למכירה אוטומטית.'));
-          ic.body.lastChild.style.padding = '8px 6px 2px';
-          ic.body.lastChild.style.fontSize = '11px';
-        }
       }
       f.appendChild(ic);
       return f;
     }
   };
+
+  /* Compact icon + value + caption, for at-a-glance status. */
+  function statChip(icon, value, label, cls) {
+    var c = el('div', 'stat-chip' + (cls ? ' ' + cls : ''));
+    c.appendChild(el('span', 'stat-chip-icon', icon));
+    var t = el('div');
+    t.appendChild(el('b', null, value));
+    t.appendChild(el('small', null, label));
+    c.appendChild(t);
+    return c;
+  }
 
   function gateNote(tier) {
     for (var i = 0; i < G.STRATA.length; i++) {
@@ -185,6 +211,7 @@
 
   var forge = {
     id: 'forge', label: 'הכבשן', icon: '🔥',
+    stageView: 'forge',
     visible: function (game) { return !!game.s.unlocks.forge; },
     build: function (game) {
       var s = game.s, o = game.o, f = U.frag(), i;
@@ -192,32 +219,29 @@
       var fuel = G.Forge.availableFuel(s);
       var slots = G.Forge.slotCount(s);
 
-      var slotCard = U.card('כבשן', slots + ' תאים · 🔥 ' + num.fmt(fuel) + ' דלק');
-      for (i = 0; i < slots; i++) {
-        var job = s.forge.jobs[i];
-        var slot = el('div', 'slot' + (job ? ' busy' : ''));
-        if (job) {
-          var r = G.RECIPE_BY_ID[job.id];
-          var sw = el('span', 'inv-swatch');
-          sw.style.background = G.res(r.out.id).color;
-          slot.appendChild(sw);
-          var m = el('div', 'slot-main');
-          var nm = el('div', 'slot-name');
-          nm.appendChild(el('span', null, G.res(r.out.id).name));
-          nm.appendChild(el('span', 'muted num', num.fmtTime((job.dur - job.t) / (o.forge || 1))));
-          m.appendChild(nm);
-          m.appendChild(U.bar(job.t / job.dur, 'ok'));
-          slot.appendChild(m);
-          (function (idx) {
-            slot.appendChild(U.button('✕', 'sm', function () {
-              G.Forge.cancel(s, idx); game.refresh(); G.UI.refresh();
-            }));
-          })(i);
-        } else {
-          slot.appendChild(el('span', 'row-icon', '🕳'));
-          slot.appendChild(el('div', 'slot-main muted', 'תא פנוי — בחר מתכון למטה'));
-        }
-        slotCard.body.appendChild(slot);
+      /* The stage draws the furnaces themselves, so the panel is controls only
+         — repeating four progress bars underneath a picture of four progress
+         bars just costs the player screen height. */
+      var busy = s.forge.jobs.length;
+      var slotCard = U.card('כבשן', busy + '/' + slots + ' תאים פעילים');
+
+      var status = el('div', 'forge-status');
+      status.appendChild(statChip('🔥', num.fmt(fuel), 'דלק', fuel < 30 ? 'bad' : null));
+      status.appendChild(statChip('🏭', busy + '/' + slots, 'תאים'));
+      status.appendChild(statChip('⚡', '×' + num.fmt(o.forge), 'מהירות'));
+      slotCard.body.appendChild(status);
+
+      if (busy) {
+        var stopAll = U.button('רוקן את הכבשן', 'sm wide', function () {
+          for (var k = s.forge.jobs.length - 1; k >= 0; k--) G.Forge.cancel(s, k);
+          game.refresh(); G.UI.refresh();
+        });
+        stopAll.style.marginTop = '8px';
+        slotCard.body.appendChild(stopAll);
+      } else {
+        var hint = el('div', 'muted', 'הכבשן כבוי. בחר מתכון מהרשימה כדי להתחיל.');
+        hint.style.cssText = 'font-size:11.5px;margin-top:8px';
+        slotCard.body.appendChild(hint);
       }
 
       var slotCost = G.Shop.forgeSlotCost(s);
@@ -250,31 +274,37 @@
           var gain = out.value * recipe.out.n / inVal;
 
           var row = U.buyRow({
-            icon: '🧱',
-            name: out.name + (isAuto ? ' ⟳' : ''),
+            icon: U.resIcon(recipe.out.id, 26),
+            name: out.name,
             desc: 'פי ' + gain.toFixed(1) + ' מערך החומרים · ' +
                   num.fmtTime(recipe.time / (o.forge || 1)) + ' · שווי ' + num.fmt(out.value) + 'ז׳',
             costText: can ? 'התך' : '—',
             affordable: can,
             extra: U.costList(s, recipe.inputs, { fuel: need, fuelHave: fuel }),
-            onClick: function (ev) {
-              if (ev.shiftKey && s.unlocks.autoSmelt) {
-                s.forge.auto = isAuto ? null : recipe.id;
-              } else {
-                G.Forge.start(s, recipe.id, o);
-              }
+            onClick: function () {
+              if (G.Forge.start(s, recipe.id, o)) G.UI.haptic(12);
               game.refresh(); G.UI.refresh();
-            }
+            },
+            // Tappable auto-smelt. This used to be Shift+click, which simply
+            // does not exist on a phone.
+            toggle: s.unlocks.autoSmelt ? {
+              icon: '⟳',
+              label: 'אוטו',
+              active: isAuto,
+              title: isAuto ? 'הפסק התכה אוטומטית' : 'התך את זה שוב ושוב',
+              onClick: function () {
+                s.forge.auto = isAuto ? null : recipe.id;
+                G.UI.haptic(14);
+                G.UI.toast('⟳', isAuto ? 'הופסקה התכה אוטומטית' : 'התכה אוטומטית',
+                           isAuto ? '' : out.name);
+                game.refresh(); G.UI.refresh();
+              }
+            } : null
           });
           rc.body.appendChild(row);
         })(G.RECIPES[i]);
       }
       if (!any) rc.body.appendChild(U.empty('עדיין לא מצאת עפרות שאפשר להתיך. תמשיך לחפור.'));
-      else if (s.unlocks.autoSmelt) {
-        var hint = el('div', 'muted', 'Shift+לחיצה קובע מתכון להתכה אוטומטית מתמשכת.');
-        hint.style.cssText = 'font-size:11px;margin-top:8px';
-        rc.body.appendChild(hint);
-      }
       f.appendChild(rc);
       return f;
     }

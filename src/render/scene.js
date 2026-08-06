@@ -12,7 +12,6 @@
 
   var PX_PER_M = 3.2;        // world scale
   var CELL = 21;             // rock texture cell size
-  var SHAFT_W = 0.34;        // shaft width as a fraction of canvas width
 
   function Scene(canvas) {
     this.canvas = canvas;
@@ -74,8 +73,13 @@
 
   /* The miner sits low in the viewport: the shaft above him is empty space, the
      rock below him is the thing worth looking at, and pushing him down keeps
-     the ratio in favour of the geology. */
-  Scene.prototype.minerScreenY = function () { return this.h * 0.70; };
+     the ratio in favour of the geology.
+
+     Clamped so the face and its HP bar still fit underneath — at 70% of a 42vh
+     phone stage the bar landed below the bottom edge and was simply not there. */
+  Scene.prototype.minerScreenY = function () {
+    return Math.min(this.h * 0.70, this.h - (this.faceHeight() + 58));
+  };
 
   /* ---- main draw -------------------------------------------------------- */
 
@@ -241,10 +245,18 @@
 
   /* ---- the shaft, beams and lamps ---------------------------------------- */
 
+  /* A third of the width is right on a desktop and far too narrow on a phone,
+     where it leaves a thumb-sized tunnel and a tiny miner. */
   Scene.prototype.shaftBounds = function () {
-    var sw = this.w * SHAFT_W;
+    var frac = this.w < 520 ? 0.52 : (this.w < 760 ? 0.42 : 0.34);
+    var sw = Math.min(this.w * frac, 420);
     var x0 = (this.w - sw) / 2;
     return { x0: x0, x1: x0 + sw, w: sw };
+  };
+
+  /* Height taken by the working face below the miner. */
+  Scene.prototype.faceHeight = function () {
+    return Math.max(46, Math.min(92, this.h * 0.24));
   };
 
   Scene.prototype.drawShaft = function (s) {
@@ -385,7 +397,7 @@
     var frac = num.clamp(rock.hp / rock.maxHp, 0, 1);
 
     // The face itself: a chunky slab across the shaft.
-    var faceH = 92;
+    var faceH = this.faceHeight();
     var wob = this.hitFace * 4;
     ctx.save();
     ctx.translate(0, wob);
@@ -438,9 +450,9 @@
       var side = (q % 2) ? 1 : -1;
       var off = 0.20 + rng.hash2(q + 90, rock.seed % 233) * 0.26;
       var ox = b.x0 + b.w * (0.5 + side * off);
-      var oy = floorY + 22 + rng.hash2(q + 17, rock.seed % 179) * (faceH - 44);
+      var oy = floorY + faceH * 0.28 + rng.hash2(q + 17, rock.seed % 179) * (faceH * 0.44);
       ctx.globalAlpha = 0.9;
-      G.Sprites.blit(ctx, pick.id, ox, oy, 24);
+      G.Sprites.blit(ctx, pick.id, ox, oy, Math.max(16, Math.min(24, faceH * 0.28)));
       ctx.globalAlpha = 1;
     }
 

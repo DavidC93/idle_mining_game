@@ -18,8 +18,8 @@
     var game = G.Game;
     game.init(saved || G.State.newState());
 
-    scene = new G.Scene(document.getElementById('mine-canvas'));
-    G.UI.init(game, scene);
+    scene = G.Stage.init(document.getElementById('mine-canvas')).mine();
+    G.UI.init(game, G.Stage);
 
     // Offline catch-up before the first frame so the report reflects reality.
     var report = null;
@@ -33,7 +33,7 @@
     if (report) G.UI.showOfflineReport(report);
     else if (!saved) firstRun();
 
-    window.addEventListener('resize', function () { scene.resize(); });
+    window.addEventListener('resize', function () { G.Stage.resize(); });
     window.addEventListener('beforeunload', function () { G.State.save(game.s); });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) G.State.save(game.s);
@@ -41,10 +41,13 @@
 
     // Clicking the mine gives one extra swing — small, but it makes the scene
     // feel like a thing you can touch rather than a screensaver.
-    document.getElementById('mine-canvas').addEventListener('pointerdown', function () {
+    document.getElementById('mine-canvas').addEventListener('pointerdown', function (ev) {
+      if (G.Stage.view !== 'mine') return;
+      ev.preventDefault();
       G.Mining.doSwing(game.s, game.o);
       scene.onSwing();
       scene.parts.kick(1.5);
+      G.UI.haptic(6);
     });
 
     lastFrame = performance.now();
@@ -54,10 +57,15 @@
   function wireScene(game) {
     G.bus.on('break', function (p) { scene.onBreak(p); });
     G.bus.on('forgeDone', function (p) {
-      scene.parts.text(scene.w * 0.5, scene.h * 0.3,
-        '+' + G.num.fmtCount(p.n) + ' ' + G.res(p.recipe.out.id).name,
-        G.Scene.readable(G.res(p.recipe.out.id).color),
-        { bold: true, size: 20, icon: p.recipe.out.id, iconSize: 28 });
+      // Shown on whichever view is up: the tray in the forge, a floating label
+      // over the mine, so finishing a smelt is never silent.
+      G.Stage.forge().pushOutput(p.recipe.out.id, p.n);
+      if (G.Stage.view === 'mine') {
+        scene.parts.text(scene.w * 0.5, scene.h * 0.28,
+          '+' + G.num.fmtCount(p.n) + ' ' + G.res(p.recipe.out.id).name,
+          G.Scene.readable(G.res(p.recipe.out.id).color),
+          { bold: true, size: 20, icon: p.recipe.out.id, iconSize: 28 });
+      }
     });
   }
 
@@ -83,7 +91,7 @@
     if (steps === 8) acc = 0;        // never let the accumulator spiral
 
     G.UI.tick(dt);
-    scene.render(game, dt);
+    G.Stage.render(game, dt);
 
     saveTimer += dt;
     if (saveTimer > SAVE_EVERY) {
