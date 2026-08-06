@@ -113,6 +113,23 @@
     if (!s.forge) s.forge = { jobs: [], auto: null };
     if (!s.forge.jobs) s.forge.jobs = [];
     if (!s.contracts) s.contracts = { active: [], nextRoll: 0 };
+
+    /* Bring the save back under the current ceilings.
+
+       Level and roster caps are what make total income finite. A save written
+       against an older, looser table would otherwise walk straight through them
+       — a level-190 sharpness or a hundred-strong crew keeps its full effect
+       forever, because nothing recomputes those numbers after purchase. */
+    for (var i = 0; i < G.UPGRADES.length; i++) {
+      var up = G.UPGRADES[i];
+      if (up.max !== undefined && s.upgrades[up.id] > up.max) s.upgrades[up.id] = up.max;
+    }
+    for (i = 0; i < G.CREW_TYPES.length; i++) {
+      var ct = G.CREW_TYPES[i], roster = s.crew && s.crew[ct.id];
+      if (ct.max !== undefined && roster && roster.length > ct.max) roster.length = ct.max;
+    }
+    if (s.frontier > G.BAL.bedrock) s.frontier = G.BAL.bedrock;
+
     s.log = [];
     s.rock = null;
     s.version = VERSION;

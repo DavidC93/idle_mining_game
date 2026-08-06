@@ -102,19 +102,38 @@
 
   /* ---- loot -------------------------------------------------------------- */
 
+  /* Drop weights for a stratum with the player's luck folded in.
+
+     Luck no longer means "read from the next layer" — it means "the rarity roll
+     inside this layer leans richer". The rare item of a layer starts at about
+     5% of rolls and climbs with luck, so it stays a find rather than a staple. */
+  var _wBuf = [];
+  function weightedTable(stratum, o) {
+    var boost = BAL.luckRarityBoost;
+    _wBuf.length = 0;
+    for (var i = 0; i < stratum.drops.length; i++) {
+      var d = stratum.drops[i];
+      var w = d.w;
+      if (d.rarity === 'uncommon') w *= 1 + o.luck * boost.uncommon;
+      else if (d.rarity === 'rare') w *= 1 + o.luck * boost.rare;
+      _wBuf.push({ id: d.id, rarity: d.rarity, w: w });
+    }
+    return _wBuf;
+  }
+
   /* One break's worth of loot at `stratumIdx`. Returns {id, n, rare}. */
   function rollDrop(s, o, stratumIdx, lootMult) {
     var stratum = G.STRATA[stratumIdx];
-    var rare = false;
+    var deeper = false;
 
-    // "Rare vein": the luck stat lets a roll read from the next stratum's
-    // table, which is where the little jolts of excitement come from.
-    if (stratumIdx + 1 < G.STRATA.length && rng.chance(o.luck)) {
+    // A thin slice of luck still reaches into the next layer — the genuinely
+    // surprising find, not the everyday one.
+    if (stratumIdx + 1 < G.STRATA.length && rng.chance(o.luck * BAL.crossLayerShare)) {
       stratum = G.STRATA[stratumIdx + 1];
-      rare = true;
+      deeper = true;
     }
 
-    var table = stratum.drops;
+    var table = weightedTable(stratum, o);
     if (s.rock && BAL.nodes[s.rock.type].gemBias) {
       var gems = [];
       for (var i = 0; i < table.length; i++) {
@@ -124,8 +143,11 @@
     }
 
     var pickEntry = rng.pickWeighted(table);
-    var qty = BAL.baseYield * o.yield * lootMult * (rare ? 1.5 : 1);
-    return { id: pickEntry.id, n: rng.roll(qty), rare: rare };
+    var qty = BAL.baseYield * o.yield * lootMult * (deeper ? 1.5 : 1);
+    // Flagged rare — and shown as such — when it is a deeper-layer find or the
+    // layer's own rare drop.
+    var isRare = deeper || pickEntry.rarity === 'rare';
+    return { id: pickEntry.id, n: rng.roll(qty), rare: isRare, deeper: deeper };
   }
 
   function grantDrop(s, drop) {
@@ -272,7 +294,6 @@
     if (n <= 0) return;
     var stratum = G.STRATA[stratumIdx];
     var perBreak = BAL.baseYield * o.yield * (1 + o.crit * (o.critMult - 1));
-    var rareShare = o.luck;
     var totals = {};
 
     function addTable(table, count, mult) {
@@ -284,17 +305,20 @@
       }
     }
 
-    var rareCount = n * rareShare;
-    addTable(stratum.drops, n - rareCount, 1);
-    if (stratumIdx + 1 < G.STRATA.length && rareCount > 0) {
-      addTable(G.STRATA[stratumIdx + 1].drops, rareCount, 1.5);
+    // Same rarity weighting as a live roll, or crew and offline loot quietly
+    // pays out a different distribution than the one on screen.
+    var deeperCount = n * o.luck * BAL.crossLayerShare;
+    var here = weightedTable(stratum, o).slice();
+    addTable(here, n - deeperCount, 1);
+    if (stratumIdx + 1 < G.STRATA.length && deeperCount > 0) {
+      addTable(weightedTable(G.STRATA[stratumIdx + 1], o).slice(), deeperCount, 1.5);
     }
 
     for (var id in totals) {
       if (totals.hasOwnProperty(id)) State.add(s, id, rng.roll(totals[id]));
     }
     s.stats.totalBreaks += n;
-    s.stats.rareFinds += Math.floor(rareCount);
+    s.stats.rareFinds += Math.floor(deeperCount);
     return totals;
   }
 
@@ -349,16 +373,25 @@
     }
   }
 
-  /* Crew swing like the player does, with a fraction of the player's power, and
-     hit the same rock-HP wall. Without that bound a digger keeps cracking one
-     rock per second at 10,000 m — where the rock has 10^30 HP — and passive
-     income stops caring about depth entirely, which breaks the whole economy. */
-  function crewBreakRate(s, o, type, stratumIdx) {
+  /* How many rocks per second the player themselves manages at a given layer.
+     Every other producer in the game is expressed as a fraction of this, so
+     they all inherit the same brakes: rock HP, the chain cap, swing speed. */
+  function playerBreakRate(s, o, stratumIdx) {
     var stratum = G.STRATA[stratumIdx];
     var depth = num.clamp(s.frontier, stratum.minDepth, stratum.maxDepth - 1);
     var hp = G.Stats.rockHP(depth, stratum);
-    var power = o.hitPower * type.powerShare * o.crew;
-    return type.breaks * o.crew * Math.min(BAL.chainCap, power / hp);
+    return o.swingRate * Math.min(BAL.chainCap, o.hitPower / hp);
+  }
+
+  /* A crew member works at a fixed fraction of the player's rate.
+
+     They used to have their own absolute breaks-per-second, which meant a
+     late-tier hire produced a hundred thousand times what the player did and
+     the training multiplier was applied twice — once to their output and again
+     to their power. Expressing them as a share of the player's rate makes the
+     whole passive economy inherit the limits the active one already has. */
+  function crewBreakRate(s, o, type, stratumIdx) {
+    return playerBreakRate(s, o, stratumIdx) * type.share * o.crew;
   }
 
   function crewBreaksPerSec(s, o) {
@@ -380,6 +413,7 @@
     grantBulk: grantBulk, stratumValue: stratumValue, workingDepth: workingDepth,
     stationStratum: stationStratum, atFrontier: atFrontier,
     syncStation: syncStation, setStation: setStation,
-    crewBreaksPerSec: crewBreaksPerSec, crewBreakRate: crewBreakRate, pickNodeType: pickNodeType, depthPerBreak: depthPerBreak
+    crewBreaksPerSec: crewBreaksPerSec, crewBreakRate: crewBreakRate,
+    playerBreakRate: playerBreakRate, pickNodeType: pickNodeType, depthPerBreak: depthPerBreak
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

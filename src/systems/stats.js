@@ -163,12 +163,13 @@
 
   /* Depth beyond which the player cannot dig until the next pickaxe is forged.
      Returning a hard wall (rather than just slower digging) is what turns the
-     forge into a goal instead of an optimisation. */
+     forge into a goal instead of an optimisation. With every gate open the wall
+     is bedrock itself — see BAL.bedrock. */
   function depthCap(s) {
     for (var i = 0; i < G.STRATA.length; i++) {
       if (s.pickTier < G.STRATA[i].gate) return G.STRATA[i].minDepth;
     }
-    return Infinity;
+    return BAL.bedrock;
   }
 
   G.Stats = {

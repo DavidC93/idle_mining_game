@@ -413,14 +413,21 @@
           if (!G.Stats.condMet(s, type.unlock)) return;
           var n = G.Shop.crewCount(s, type.id);
           var cost = G.Shop.crewCost(s, type);
-          var c = U.card(type.icon + ' ' + type.name, n + ' מועסקים');
+          var full = G.Shop.crewFull(s, type);
+          var roster = type.max !== undefined ? n + ' / ' + type.max + ' מועסקים' : n + ' מועסקים';
+          var c = U.card(type.icon + ' ' + type.name, roster);
+          // share is a small fraction now, so a rounded percent would read "2%"
+          // for three different tiers.
+          var sharePct = (type.share * 100).toFixed(type.share < 0.1 ? 1 : 0);
 
           c.body.appendChild(U.buyRow({
-            icon: '➕', name: 'שכור עוד אחד',
-            desc: 'תפוקה: ' + type.breaks + ' הנפות/ש׳ · עוצמה ' +
-                  Math.round(type.powerShare * 100) + '% מהמכוש שלך',
-            costText: goldText(cost),
-            affordable: s.gold >= cost,
+            icon: full ? '✓' : '➕',
+            name: full ? 'הצוות מלא' : 'שכור עוד אחד',
+            desc: full
+              ? 'הגעת למכסת ' + type.max + ' העובדים מסוג זה'
+              : 'עובד ב־' + sharePct + '% מקצב הכרייה שלך, בשכבה שתציב אותו בה',
+            costText: full ? '—' : goldText(cost),
+            affordable: !full && s.gold >= cost,
             onClick: function () {
               if (G.Shop.hireCrew(s, type.id)) { game.refresh(); G.UI.refresh(); }
             }

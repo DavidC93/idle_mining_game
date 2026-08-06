@@ -194,13 +194,16 @@ ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
   const BUDGET = 0.85;
   const contribution = (per, rate) => Math.log(1 + per) / Math.log(rate);
 
-  /* Only lines with a *small* cap are safe to ignore. A cap of 250 levels at
-     +5% each is 1.7e5x — that is not a cap, it is a rounding error on the way
-     to infinity, so we count anything above this. */
-  const CAP_IS_REALLY_A_CAP = 60;
+  /* Every income line counts, capped or not.
 
-  /* Stats that multiply gold income at a fixed depth. `power` is excluded
-     because its contribution saturates at BAL.chainCap breaks per swing. */
+     This used to skip any line with max <= 60 on the theory that a cap makes
+     the exponent moot. It does not: the exponent decides how fast you reach the
+     cap, and with five lines all "safely capped" the player hit every ceiling
+     inside forty minutes. Boundedness is section 7a's job; this section is
+     purely about speed, so it ignores caps entirely. */
+
+  /* Stats that multiply gold income at a fixed depth. `power` is handled
+     separately below because it has two mutually exclusive regimes. */
   const INCOME_STATS = new Set(['speed', 'yield', 'price', 'orePrice', 'crew', 'forge']);
 
   /* The paths gold can actually flow along. These are multiplicative chains:
@@ -217,7 +220,6 @@ ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
     const effs = u.effect.multi || [u.effect];
     for (const e of effs) {
       if (!e.mult || !INCOME_STATS.has(e.mult)) continue;
-      if (u.max !== undefined && u.max <= CAP_IS_REALLY_A_CAP) continue;
       perStat[e.mult] = (perStat[e.mult] || 0) + contribution(e.per, u.rate);
     }
   }
@@ -232,14 +234,13 @@ ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
 
      This term is invisible in the upgrade tables and was the reason the economy
      still diverged after every individual upgrade line had been made safe. */
-  let depthExp = 0;
+  let depthExp = 0, powerExp = 0;
   {
     let p = 0;
     for (const u of G.UPGRADES) {
       const effs = u.effect.multi || [u.effect];
       for (const e of effs) {
         if (e.mult !== 'power') continue;
-        if (u.max !== undefined && u.max <= 100) continue;   // capped power is a constant
         p += contribution(e.per, u.rate);
       }
     }
@@ -271,19 +272,94 @@ ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
     const a = (lnRatio / n) / (thickness / n);
     const k = Math.log(G.BAL.hpGrowth);
     depthExp = a * p / k;
+    powerExp = p;
     ok.push(`depth feedback exponent ${depthExp.toFixed(2)} ` +
             `(power ${p.toFixed(2)} = upgrades + pickaxe ladder ${pickExp.toFixed(2)}, hpGrowth ${G.BAL.hpGrowth})`);
   }
 
+  /* Power has two regimes and they are mutually exclusive, so the honest term
+     is the larger of the two, not their sum:
+
+       under the chain cap  power multiplies break rate directly  -> powerExp
+       at the chain cap     power buys depth, and depth buys value -> depthExp
+
+     Summing them (the old model) double-counted one mechanism and still
+     under-predicted the runaway, because it was quietly dropping the capped
+     power upgrades from powerExp. Taking the max counts each mechanism once at
+     full strength, which is the worst case a player can actually be in. */
+  const powerTerm = Math.max(powerExp, depthExp);
+  const powerLabel = powerExp >= depthExp ? 'power' : 'depth';
+
   for (const [name, stats] of Object.entries(paths)) {
     const upgradeExp = stats.reduce((a, st) => a + (perStat[st] || 0), 0);
-    const total = upgradeExp + depthExp;
+    const total = upgradeExp + powerTerm;
     const detail = stats.filter(st => perStat[st]).map(st => `${st} ${perStat[st].toFixed(2)}`).join(' + ') +
-                   ` + depth ${depthExp.toFixed(2)}`;
+                   ` + ${powerLabel} ${powerTerm.toFixed(2)}`;
     if (total >= 1) err(`income runaway on ${name}: ${detail} = ${total.toFixed(2)} >= 1.00`);
     else if (total > BUDGET) warn(`${name} exponent ${total.toFixed(2)} (${detail}) is close to the 1.00 cliff`);
     else ok.push(`${name} exponent ${total.toFixed(2)} (${detail})`);
   }
+}
+
+/* ---- 7a. the income ceiling ---------------------------------------------
+   Stronger than the exponent budget and much harder to get wrong: if every
+   line that multiplies income has a level cap, total income has a finite
+   ceiling and cannot diverge no matter which feedback path the analysis
+   missed. The exponent check above only covers uncapped lines, and it did miss
+   one — at the frontier, mining power multiplies income as well as buying
+   depth, which is not visible in any upgrade table. */
+{
+  const INCOME_STATS = ['power', 'speed', 'yield', 'price', 'orePrice', 'forge', 'crew'];
+  const ceiling = {};
+  const uncapped = [];
+  for (const u of G.UPGRADES) {
+    const effs = u.effect.multi || [u.effect];
+    for (const e of effs) {
+      if (!e.mult || !INCOME_STATS.includes(e.mult)) continue;
+      if (u.max === undefined) { uncapped.push(`${u.id} (${e.mult})`); continue; }
+      ceiling[e.mult] = (ceiling[e.mult] || 1) * Math.pow(1 + e.per, u.max);
+    }
+  }
+  if (uncapped.length) {
+    err(`income lines with no level cap: ${uncapped.join(', ')} — income has no ceiling`);
+  } else {
+    const parts = INCOME_STATS.filter(k => ceiling[k])
+      .map(k => `${k} x${G.num.fmt(ceiling[k])}`);
+    const total = INCOME_STATS.reduce((a, k) => a * (ceiling[k] || 1), 1);
+    ok.push(`income ceiling x${G.num.fmt(total)} from shop upgrades (${parts.join(', ')})`);
+  }
+}
+
+/* ---- 7b. rarity actually means something --------------------------------- */
+/* The player's complaint that fixed this: rare ore turned up constantly. A
+   layer's rare drop should be a find, not a staple, and no layer should dump
+   a pile of brand-new resources on you at once. */
+{
+  const MAX_RARE_SHARE = 0.10;
+  const MIN_RARE_SHARE = 0.02;
+  let worstRare = 0, worstLayer = '';
+  for (const st of G.STRATA) {
+    const total = st.drops.reduce((a, d) => a + d.w, 0);
+    const rare = st.drops.filter(d => d.rarity === 'rare').reduce((a, d) => a + d.w, 0);
+    const share = rare / total;
+    if (share > worstRare) { worstRare = share; worstLayer = st.name; }
+    if (rare > 0 && share < MIN_RARE_SHARE) {
+      warn(`stratum ${st.id}: rare drops are ${(share * 100).toFixed(1)}% — so rare they read as broken`);
+    }
+    const fresh = st.drops.filter(d => d.rarity !== 'carry').length;
+    if (fresh > 3) err(`stratum ${st.id} introduces ${fresh} new resources at once`);
+  }
+  if (worstRare > MAX_RARE_SHARE) {
+    err(`rare drops reach ${(worstRare * 100).toFixed(1)}% at "${worstLayer}" — not rare`);
+  } else {
+    ok.push(`rare drops peak at ${(worstRare * 100).toFixed(1)}% of rolls, max 3 new resources per layer`);
+  }
+
+  // Luck must bias the rarity roll, not hand the player the next layer.
+  const maxLuck = 0.60;
+  const cross = maxLuck * G.BAL.crossLayerShare;
+  if (cross > 0.12) err(`luck reaches into the next layer ${(cross * 100).toFixed(0)}% of the time`);
+  else ok.push(`at max luck, ${(cross * 100).toFixed(1)}% of drops come from the next layer down`);
 }
 
 /* ---- 8. achievements are all wired up ----------------------------------- */

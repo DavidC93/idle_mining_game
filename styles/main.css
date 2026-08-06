@@ -291,15 +291,17 @@ button:not(:disabled):active { transform: scale(.965); }
    button simply not working. */
 #tabs {
   flex: 0 0 auto;
-  display: flex; flex-wrap: wrap; gap: 2px;
-  padding: 6px 6px 0;
+  display: flex; gap: 3px;
+  padding: 6px;
   border-bottom: 1px solid var(--line);
 }
 
 .tab {
   position: relative;
-  flex: 0 1 auto;
-  padding: 8px 11px 9px;
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  padding: 8px 6px 9px;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   color: var(--ink-3);
   font-size: 12.5px;
@@ -308,6 +310,7 @@ button:not(:disabled):active { transform: scale(.965); }
   transition: .15s;
 }
 .tab:hover { color: var(--ink-2); background: rgba(255,255,255,.03); }
+.tab > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active {
   color: #fff;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
@@ -318,6 +321,41 @@ button:not(:disabled):active { transform: scale(.965); }
   background: var(--ok);
   box-shadow: 0 0 6px var(--ok);
 }
+
+.tab-more { color: var(--ink-2); }
+
+/* Overflow sheet: the tabs that did not fit on the bar. */
+#more-sheet { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-end; }
+#more-sheet[hidden] { display: none; }
+.more-backdrop { position: absolute; inset: 0; background: rgba(5,7,12,.6); backdrop-filter: blur(2px); }
+.more-panel {
+  position: relative; width: 100%;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.5);
+  animation: sheetUp .2s cubic-bezier(.2,.9,.3,1.1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@keyframes sheetUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.more-panel > header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--line-soft);
+}
+#more-list { padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.more-item {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 1px solid var(--line-soft);
+  min-height: 54px;
+  text-align: start;
+}
+.more-item.active { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,201,60,.22); }
+.more-icon { font-size: 21px; }
+.more-item .dot { position: absolute; top: 8px; inset-inline-end: 10px; }
 
 #panel-scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 #panel-scroll::-webkit-scrollbar { width: 9px; }
@@ -691,9 +729,12 @@ button:not(:disabled):active { transform: scale(.965); }
 
 /* Bottom-right of the window: that is over the mine stage in this RTL layout,
    clear of the panel column, the station selector and the ticker. */
+/* Below #more-sheet (30) on purpose: on a phone the toasts sit at the top of
+   the screen, and floating them over the sheet's dimmed backdrop made them look
+   like part of the sheet. Still above everything else. */
 #toasts {
   position: fixed; right: 52px; bottom: 132px;
-  z-index: 50; display: flex; flex-direction: column; gap: 7px;
+  z-index: 28; display: flex; flex-direction: column; gap: 7px;
   pointer-events: none; max-width: min(320px, 62vw);
 }
 .toast {
@@ -736,7 +777,7 @@ button:not(:disabled):active { transform: scale(.965); }
     box-shadow: 0 -6px 20px rgba(0,0,0,.4);
   }
   .tab {
-    flex: 1 1 26%;
+    flex: 1 1 0;
     flex-direction: column;
     gap: 2px;
     justify-content: center;

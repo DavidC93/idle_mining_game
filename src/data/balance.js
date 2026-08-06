@@ -11,8 +11,22 @@
     /* Rock hardness per metre. This is the brake on the whole economy: depth
        multiplies income (deeper ore is worth more) and depth is bought with
        power, so if HP does not climb fast enough the two feed each other and
-       gold diverges. Do not lower it without re-running tools/validate.js. */
-    hpGrowth: 1.010,
+       gold diverges. Do not lower it without re-running tools/validate.js.
+
+       Set against the power ceiling rather than by feel: the pickaxe ladder tops
+       out at x57280 and the three power upgrades at x3.3e7 combined, so the
+       deepest rock the game can ever contain must sit under that product. At
+       1.0013 per metre, bedrock (16km, hardness 30) has 1.1e11 HP against a
+       maximum hit of 1.9e12 — reachable only with both ladders near the top,
+       which is exactly where the bottom of the mine should be. */
+    hpGrowth: 1.0013,
+
+    /* The bottom. Past the last stratum there is no new ore and no new value,
+       so digging further was pure number inflation — and beyond ~250km
+       hpGrowth^depth overflows to Infinity and the whole HP brake silently
+       stops existing. Reaching bedrock is the run's finish line; going further
+       is what prestige is for. */
+    bedrock: 16000,
 
     /* Swings per second before speed multipliers. Fast enough that the very
        first minute already produces visible drops. */
@@ -26,11 +40,18 @@
        Kept small on purpose: it is the one place where raw power turns into
        raw income, so an unbounded value makes over-levelled players print gold. */
     chainCap: 12,
-    baseYield: 2,          // units per drop roll
+    baseYield: 1,          // units per drop roll
     dropRolls: 1,          // number of loot rolls per break
     baseCrit: 0.0,
     baseCritMult: 4,       // crits instantly shatter and multiply loot by this
-    baseLuck: 0.02,        // chance a roll upgrades to the next stratum's table
+    baseLuck: 0.02,
+    /* What `luck` does. Most of it biases the rarity roll inside the layer you
+       are standing in; only a small slice of it reaches into the next layer.
+       It used to be entirely the latter, at up to 60%, which meant a lucky
+       player skipped a whole tier of the loot economy and every "rare" find
+       arrived far too early to feel rare. */
+    luckRarityBoost: { uncommon: 2.0, rare: 5.0 },
+    crossLayerShare: 0.12,
 
     /* Special nodes. Weights are relative to `normal`. */
     nodes: {
@@ -43,7 +64,10 @@
 
     /* Market. Selling a lot of one thing depresses its price and it recovers
        over time — gives the market screen an actual decision in it. */
-    market: { minPrice: 0.35, recoverPerSec: 0.02, impactPerSale: 0.00004 },
+    /* Flooding the market with one resource depresses its price, and it
+       recovers over a couple of minutes. Strong enough that dumping a huge
+       stack of one ore is visibly worse than selling a spread of goods. */
+    market: { minPrice: 0.22, recoverPerSec: 0.006, impactPerSale: 0.00055 },
 
     forge: { baseSpeed: 1 },
 

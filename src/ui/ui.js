@@ -42,34 +42,108 @@
        button the user pressed was usually gone by the time they released and
        no click event ever fired — three out of four tab clicks were silently
        swallowed. */
+    /* How many tabs fit on one row before the rest go behind "עוד".
+
+       Seven tabs wrapped to three rows and ate a quarter of a phone screen —
+       the panel underneath is where the actual information is. One row, always,
+       with the overflow one tap away. */
+    tabSlots: function () {
+      var w = document.getElementById('side').clientWidth || window.innerWidth;
+      return num.clamp(Math.floor(w / 78), 3, 7);
+    },
+
+    /* Which panels sit on the bar. Order is fixed so the bar never reshuffles
+       under the player's thumb, except that the active panel is always on it. */
+    splitTabs: function (visible) {
+      var slots = this.tabSlots();
+      if (visible.length <= slots) return { bar: visible, more: [] };
+
+      var bar = visible.slice(0, slots - 1);      // last slot is the More button
+      var more = visible.slice(slots - 1);
+      var self = this;
+      var activeInMore = more.filter(function (p) { return p.id === self.activeTab; })[0];
+      if (activeInMore) {
+        // Swap the active panel onto the bar so you can always see where you are.
+        more = more.filter(function (p) { return p !== activeInMore; });
+        more.unshift(bar[bar.length - 1]);
+        bar[bar.length - 1] = activeInMore;
+      }
+      return { bar: bar, more: more };
+    },
+
     buildTabs: function (force) {
       var self = this;
       var visible = G.PANELS.filter(function (p) { return p.visible(self.game); });
-      var sig = visible.map(function (p) {
+      var split = this.splitTabs(visible);
+      var moreNew = split.more.some(function (p) { return !self.seenTabs[p.id]; });
+
+      var sig = split.bar.map(function (p) {
         return p.id + (p.id === self.activeTab ? '*' : '') + (self.seenTabs[p.id] ? '' : '!');
-      }).join('|');
+      }).join('|') + '#' + split.more.length + (moreNew ? '!' : '');
       if (!force && sig === this.tabSig) return;
       this.tabSig = sig;
 
       var nav = document.getElementById('tabs');
       U.clear(nav);
-      visible.forEach(function (p) {
-        var t = el('button', 'tab' + (p.id === self.activeTab ? ' active' : ''));
-        t.type = 'button';
-        t.dataset.panel = p.id;
-        t.appendChild(el('span', null, p.icon));
-        t.appendChild(el('span', null, p.label));
-        if (!self.seenTabs[p.id] && p.id !== self.activeTab) t.appendChild(el('span', 'dot'));
-        t.addEventListener('click', function () {
-          self.activeTab = p.id;
-          self.seenTabs[p.id] = true;
-          self.haptic(10);
-          self.applyStageView();
-          self.buildTabs(true);
-          self.renderPanel();
-        });
-        nav.appendChild(t);
+      split.bar.forEach(function (p) { nav.appendChild(self.tabButton(p)); });
+
+      if (split.more.length) {
+        var m = el('button', 'tab tab-more');
+        m.type = 'button';
+        m.dataset.panel = '__more';
+        m.appendChild(el('span', null, '⋯'));
+        m.appendChild(el('span', null, 'עוד'));
+        if (moreNew) m.appendChild(el('span', 'dot'));
+        m.addEventListener('click', function () { self.haptic(10); self.openMore(split.more); });
+        nav.appendChild(m);
+      }
+    },
+
+    tabButton: function (p) {
+      var self = this;
+      var t = el('button', 'tab' + (p.id === this.activeTab ? ' active' : ''));
+      t.type = 'button';
+      t.dataset.panel = p.id;
+      t.appendChild(el('span', null, p.icon));
+      t.appendChild(el('span', null, p.label));
+      if (!this.seenTabs[p.id] && p.id !== this.activeTab) t.appendChild(el('span', 'dot'));
+      t.addEventListener('click', function () { self.selectTab(p.id); });
+      return t;
+    },
+
+    selectTab: function (id) {
+      this.activeTab = id;
+      this.seenTabs[id] = true;
+      this.haptic(10);
+      this.closeMore();
+      this.applyStageView();
+      this.buildTabs(true);
+      this.renderPanel();
+    },
+
+    /* ---- overflow sheet -------------------------------------------------- */
+
+    openMore: function (panels) {
+      var self = this;
+      var sheet = document.getElementById('more-sheet');
+      var list = document.getElementById('more-list');
+      U.clear(list);
+      panels.forEach(function (p) {
+        var b = el('button', 'more-item' + (p.id === self.activeTab ? ' active' : ''));
+        b.type = 'button';
+        b.dataset.panel = p.id;
+        b.appendChild(el('span', 'more-icon', p.icon));
+        b.appendChild(el('b', null, p.label));
+        if (!self.seenTabs[p.id]) b.appendChild(el('span', 'dot'));
+        b.addEventListener('click', function () { self.selectTab(p.id); });
+        list.appendChild(b);
       });
+      sheet.hidden = false;
+    },
+
+    closeMore: function () {
+      var sheet = document.getElementById('more-sheet');
+      if (sheet) sheet.hidden = true;
     },
 
     renderPanel: function () {
@@ -225,6 +299,14 @@
         clearTimeout(self._pdTimer);
         self.refresh();
       }
+      window.addEventListener('resize', function () {
+        self.tabSig = null;      // slot count may have changed
+        self.refresh();
+      });
+      document.getElementById('more-close').addEventListener('click', function () { self.closeMore(); });
+      document.querySelector('#more-sheet .more-backdrop')
+        .addEventListener('click', function () { self.closeMore(); });
+
       window.addEventListener('pointerup', release, true);
       window.addEventListener('pointercancel', release, true);
       window.addEventListener('blur', release);
@@ -485,7 +567,7 @@
       document.getElementById('modal-close').addEventListener('click', function () { self.closeModal(); });
       document.querySelector('.modal-backdrop').addEventListener('click', function () { self.closeModal(); });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') self.closeModal();
+        if (e.key === 'Escape') { self.closeModal(); self.closeMore(); }
       });
 
       G.bus.on('achievement', function (p) {

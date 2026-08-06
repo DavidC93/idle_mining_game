@@ -76,13 +76,22 @@
 
   function crewCount(s, typeId) { return (s.crew[typeId] || []).length; }
 
+  /* A full roster is a real ceiling, not a soft one — see the note on `max` in
+     data/upgrades.js. Returning Infinity keeps every caller that only compares
+     against gold (the shop rows, the sim's agent) correct without special cases. */
+  function crewFull(s, type) {
+    return type.max !== undefined && crewCount(s, type.id) >= type.max;
+  }
+
   function crewCost(s, type) {
+    if (crewFull(s, type)) return Infinity;
     return Math.ceil(type.base * Math.pow(type.rate, crewCount(s, type.id)));
   }
 
   function hireCrew(s, typeId, stratumIdx) {
     var type = G.CREW_BY_ID[typeId];
     if (!type || !s.unlocks.crew || !G.Stats.condMet(s, type.unlock)) return false;
+    if (crewFull(s, type)) return false;
     var cost = crewCost(s, type);
     if (s.gold < cost) return false;
     s.gold -= cost;
@@ -123,7 +132,8 @@
     bulkCost: bulkCost, buyUpgrade: buyUpgrade,
     unlockVisible: unlockVisible, buyUnlock: buyUnlock,
     forgeSlotCost: forgeSlotCost, buyForgeSlot: buyForgeSlot,
-    crewCount: crewCount, crewCost: crewCost, hireCrew: hireCrew, assignCrew: assignCrew,
+    crewCount: crewCount, crewCost: crewCost, crewFull: crewFull,
+    hireCrew: hireCrew, assignCrew: assignCrew,
     nextPick: nextPick, forgePick: forgePick
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

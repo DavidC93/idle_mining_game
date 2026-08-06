@@ -742,15 +742,16 @@
     }
     if (payload.crit) {
       this.parts.burst(fx, fy, '#ffd257', 18);
-      this.parts.text(fx, fy - 128, 'קריטי!', '#ffd257', { bold: true, size: 22, life: 0.9 });
+      this.parts.text(fx, fy - LANE_TOP - 26, 'קריטי!', '#ffd257',
+                      { bold: true, size: 22, life: 0.9, spread: 0 });
     }
     if (payload.type !== 'normal') {
       this.parts.burst(fx, fy, node.color || '#fff', 20);
       this.parts.kick(6);
     }
     if (payload.gold > 0) {
-      this.parts.text(fx, fy - 156, '+' + num.fmt(payload.gold) + ' זהב', '#f2c14e',
-                      { bold: true, size: 21 });
+      this.parts.text(fx, fy - LANE_TOP - 58, '+' + num.fmt(payload.gold) + ' זהב', '#f2c14e',
+                      { bold: true, size: 21, spread: 0 });
     }
   };
 
@@ -768,7 +769,9 @@
   };
 
   var DROP_FLUSH = 0.26;   // seconds between label batches
-  var DROP_LANES = 4;      // most labels shown at once
+  var DROP_LANES = 3;      // most labels shown at once
+  var LANE_STEP = 34;
+  var LANE_TOP = 20 + DROP_LANES * LANE_STEP;   // where banners must clear to
 
   Scene.prototype.flushDrops = function (dt) {
     this.dropTimer = (this.dropTimer || 0) + dt;
@@ -788,7 +791,7 @@
     var fx = this.w / 2, fy = this.minerScreenY() + 24;
     for (var i = 0; i < Math.min(ids.length, DROP_LANES); i++) {
       var id = ids[i], e = q[id], r = G.res(id);
-      this.parts.text(fx, fy - 20 - i * 34,
+      this.parts.text(fx, fy - 20 - i * LANE_STEP,
         '+' + num.fmtCount(e.n) + ' ' + r.name,
         e.rare ? '#d9b0ff' : readable(r.color), {
           bold: true,
