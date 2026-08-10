@@ -20,7 +20,7 @@
   /* A titled card with a body you fill in. */
   function card(title, sub, opts) {
     opts = opts || {};
-    var c = el('div', 'card');
+    var c = el('div', 'card' + (opts.grow ? ' grow' : ''));
     if (title) {
       var h = el('header');
       var left = el('div');

@@ -160,6 +160,18 @@
         st.drops.push({ id: extra[i], rarity: 'carry', w: 14 });
       }
     }
+
+    /* Fold duplicates together. A resource can arrive here twice — once as the
+       previous layer's staple and again as a progression carry-over — and two
+       rows for the same ore is both a wrong-looking drop table on screen and a
+       weight that reads differently than the sum it actually is. */
+    var merged = [], seen = {};
+    for (i = 0; i < st.drops.length; i++) {
+      var dr = st.drops[i];
+      if (seen[dr.id] === undefined) { seen[dr.id] = merged.length; merged.push(dr); }
+      else merged[seen[dr.id]].w += dr.w;
+    }
+    st.drops = merged;
   }
 
   function res(id) { return byId[id]; }

@@ -80,56 +80,191 @@
      MINE — the pickaxe, the current layer, and what you are carrying
      ===================================================================== */
 
+  /* ---- the pickaxe sheet -------------------------------------------------- */
+
+  function pickaxeReady(s) {
+    var next = G.Shop.nextPick(s);
+    return !!next && G.State.canAfford(s, next.cost);
+  }
+
+  function buildPickaxeBody(game, body) {
+    var s = game.s, o = game.o;
+    var pick = G.PICKAXES[Math.min(s.pickTier, G.PICKAXES.length - 1)];
+    var next = G.Shop.nextPick(s);
+
+    var head = el('div', 'sheet-hero');
+    head.appendChild(el('div', 'sheet-hero-icon', '⛏'));
+    var ht = el('div');
+    ht.appendChild(el('b', null, pick.name));
+    ht.appendChild(el('small', null, 'עוצמה בסיסית ' + num.fmt(pick.power) +
+                                    ' · עוצמה כוללת ' + num.fmt(o.hitPower)));
+    head.appendChild(ht);
+    body.appendChild(head);
+
+    if (!next) {
+      body.appendChild(el('div', 'good', 'חישלת את המכוש האחרון. אגדה.'));
+      return;
+    }
+
+    var canPay = G.State.canAfford(s, next.cost);
+    body.appendChild(el('div', 'section-title', 'הדרגה הבאה'));
+    body.appendChild(U.buyRow({
+      icon: '🔨',
+      name: next.name,
+      desc: 'עוצמה ' + num.fmt(next.power) + ' (פי ' + (next.power / pick.power).toFixed(1) + ')' +
+            gateNote(next.tier),
+      costText: goldText(next.cost.gold),
+      affordable: canPay,
+      extra: U.costList(s, next.cost.mats.slice()),
+      onClick: function () {
+        if (G.Shop.forgePick(s)) {
+          G.UI.haptic(24);
+          G.UI.toast('⛏', next.name, 'חושל!');
+          game.refresh(); G.UI.refresh();
+        }
+      }
+    }));
+    body.appendChild(el('div', 'muted sheet-note', canPay
+      ? 'הכל מוכן — אפשר לחשל.'
+      : 'חסרים חומרים או זהב. הם מסומנים באדום למעלה.'));
+  }
+
+  /* ---- the warehouse sheet ------------------------------------------------ */
+
+  function buildWarehouseBody(game, body) {
+    var s = game.s, o = game.o, i;
+    var ids = Object.keys(s.inv).filter(function (k) { return s.inv[k] > 0; });
+    ids.sort(function (a, b) { return G.res(b).value * s.inv[b] - G.res(a).value * s.inv[a]; });
+
+    var head = el('div', 'sheet-hero');
+    head.appendChild(el('div', 'sheet-hero-icon', '📦'));
+    var ht = el('div');
+    ht.appendChild(el('b', null, num.fmt(G.Market.inventoryValue(s, o)) + ' ז׳'));
+    ht.appendChild(el('small', null, ids.length ? 'שווי כל המחסן' : 'המחסן ריק'));
+    head.appendChild(ht);
+    body.appendChild(head);
+
+    var actions = el('div', 'sheet-actions');
+    if (s.unlocks.autoSell) {
+      actions.appendChild(U.segmented([
+        { value: 'sell', label: 'מכירה', title: 'הקשה מוכרת את כל הערימה' },
+        { value: 'auto', label: '⟳ אוטומטי', title: 'הקשה מסמנת משאב למכירה אוטומטית' }
+      ], s.settings.invMode || 'sell', function (v) {
+        s.settings.invMode = v; G.UI.haptic(10); G.UI.refresh();
+      }));
+    }
+    actions.appendChild(U.button('מכור הכל', 'sm', function () {
+      var got = G.Market.sellAll(s, function (id) { return !G.res(id).fuel; }, o);
+      if (got > 0) G.UI.toast('🪙', 'נמכר', num.fmt(got) + ' זהב');
+      G.UI.haptic(14);
+      game.refresh(); G.UI.refresh();
+    }));
+    body.appendChild(actions);
+
+    if (!ids.length) {
+      body.appendChild(U.empty('המחסן ריק. הכורה עובד — תן לו רגע.'));
+      return;
+    }
+
+    var autoMode = s.unlocks.autoSell && s.settings.invMode === 'auto';
+    var grid = el('div', 'inv-grid');
+    for (i = 0; i < ids.length; i++) {
+      (function (id) {
+        var qty = s.inv[id];
+        /* The stack's worth, not one unit's. "5 gold each" made the player do
+           the multiplication to answer the only question they actually have,
+           which is what tapping this chip pays out. */
+        var stack = G.Market.unitPrice(s, id, o) * qty;
+        var factor = G.Market.factor(s, id);
+        grid.appendChild(U.resChip(id, qty, {
+          button: true,
+          subtitle: num.fmtCount(qty) + ' · ' + num.fmt(stack) + 'ז׳',
+          title: (autoMode ? 'הקשה מסמנת למכירה אוטומטית' : 'הקשה מוכרת את כל הערימה') +
+                 (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
+          selling: !!s.autoSell[id],
+          onClick: function () {
+            if (autoMode) {
+              s.autoSell[id] = !s.autoSell[id];
+              G.UI.haptic(14);
+              G.UI.toast(s.autoSell[id] ? '⟳' : '✋', G.res(id).name,
+                         s.autoSell[id] ? 'יימכר אוטומטית' : 'מכירה אוטומטית בוטלה');
+            } else {
+              var got = G.Market.sell(s, id, s.inv[id], o);
+              if (got > 0) {
+                G.UI.haptic(12);
+                G.UI.toast('🪙', G.res(id).name, '+' + num.fmt(got) + ' זהב');
+              }
+            }
+            game.refresh(); G.UI.refresh();
+          }
+        }));
+      })(ids[i]);
+    }
+    body.appendChild(grid);
+  }
+
+  /* One of the two big tiles on the mine screen. */
+  function actionTile(opts) {
+    var b = el('button', 'action-tile' + (opts.hot ? ' hot' : ''));
+    b.appendChild(el('span', 'action-tile-icon', opts.icon));
+    var t = el('span', 'action-tile-text');
+    t.appendChild(el('b', null, opts.title));
+    t.appendChild(el('small', null, opts.sub));
+    b.appendChild(t);
+    if (opts.badge) b.appendChild(el('span', 'action-tile-badge', opts.badge));
+    b.addEventListener('click', function () { G.UI.haptic(12); opts.onClick(); });
+    return b;
+  }
+
+  /* =====================================================================
+     MINE — everything at a glance, with the pickaxe and the warehouse one
+     tap away. This screen deliberately does not scroll: it is the one the
+     player stares at, and a list that moves under the thumb while the miner
+     works is the worst place to put the two actions they take most.
+     ===================================================================== */
+
   var mine = {
     id: 'mine', label: 'המכרה', icon: '⛏',
+    noScroll: true,
     visible: function () { return true; },
     build: function (game) {
-      var s = game.s, o = game.o, f = U.frag();
+      var s = game.s, o = game.o, f = U.frag(), i;
+      var st = G.Mining.stationStratum(s);
 
-      /* --- pickaxe / forge next tier --- */
-      var pick = G.PICKAXES[Math.min(s.pickTier, G.PICKAXES.length - 1)];
+      /* --- the two actions --- */
+      var ready = pickaxeReady(s);
       var next = G.Shop.nextPick(s);
-      var pc = U.card('המכוש שלך', pick.name);
-      var cur = el('div');
-      cur.appendChild(el('div', 'dim', 'עוצמה בסיסית: ' + num.fmt(pick.power) +
-        ' · עוצמה כוללת: ' + num.fmt(o.hitPower)));
-      pc.body.appendChild(cur);
-
-      if (next) {
-        var canPay = G.State.canAfford(s, next.cost);
-        var wrap = el('div');
-        wrap.style.marginTop = '10px';
-        wrap.appendChild(el('div', 'section-title', 'הדרגה הבאה'));
-        var mats = next.cost.mats.slice();
-        var row = U.buyRow({
-          icon: '🔨',
-          name: next.name,
-          desc: 'עוצמה ' + num.fmt(next.power) + ' (פי ' + (next.power / pick.power).toFixed(1) + ')' +
-                gateNote(next.tier),
-          costText: goldText(next.cost.gold),
-          affordable: canPay,
-          extra: U.costList(s, mats),
-          onClick: function () {
-            if (G.Shop.forgePick(s)) { game.refresh(); G.UI.refresh(); }
-          }
-        });
-        wrap.appendChild(row);
-        pc.body.appendChild(wrap);
-      } else {
-        pc.body.appendChild(el('div', 'good', 'חישלת את המכוש האחרון. אגדה.'));
-      }
-      f.appendChild(pc);
+      var tiles = el('div', 'action-tiles');
+      tiles.appendChild(actionTile({
+        icon: '⛏', hot: ready,
+        title: 'המכוש',
+        sub: next ? (ready ? 'מוכן לשדרוג!' : 'הבא: ' + next.name)
+                  : G.PICKAXES[s.pickTier].name,
+        badge: ready ? '!' : null,
+        onClick: function () {
+          G.UI.openLiveModal('המכוש שלך', function (body) { buildPickaxeBody(game, body); });
+        }
+      }));
+      var invValue = G.Market.inventoryValue(s, o);
+      tiles.appendChild(actionTile({
+        icon: '📦',
+        title: 'המחסן',
+        sub: invValue > 0 ? num.fmt(invValue) + ' ז׳ למכירה' : 'ריק',
+        onClick: function () {
+          G.UI.openLiveModal('המחסן', function (body) { buildWarehouseBody(game, body); });
+        }
+      }));
+      f.appendChild(tiles);
 
       /* --- current layer --- */
-      var st = G.Mining.stationStratum(s);
-      var lc = U.card('שכבה נוכחית', st.name);
+      var lc = U.card('שכבה נוכחית', st.name, { tight: true, grow: true });
       var lb = lc.body;
       lb.appendChild(el('div', 'dim',
         'עומק עבודה: ' + num.fmtDepth(G.Mining.workingDepth(s)) +
         ' · קושי סלע: ' + num.fmt(G.Stats.rockHP(G.Mining.workingDepth(s), st))));
       lb.appendChild(el('div', 'section-title', 'מה נמצא כאן'));
       var dl = el('div', 'inv-grid');
-      var totalW = 0, i;
+      var totalW = 0;
       for (i = 0; i < st.drops.length; i++) totalW += st.drops[i].w;
       for (i = 0; i < st.drops.length; i++) {
         var d = st.drops[i];
@@ -139,66 +274,6 @@
       }
       lb.appendChild(dl);
       f.appendChild(lc);
-
-      /* --- inventory --- */
-      var ids = Object.keys(s.inv).filter(function (k) { return s.inv[k] > 0; });
-      ids.sort(function (a, b) { return G.res(b).value * s.inv[b] - G.res(a).value * s.inv[a]; });
-
-      var sellAllBtn = U.button('מכור הכל', 'sm', function () {
-        var got = G.Market.sellAll(s, function (id) { return !G.res(id).fuel; }, o);
-        if (got > 0) G.UI.toast('🪙', 'נמכר', num.fmt(got) + ' זהב');
-        game.refresh(); G.UI.refresh();
-      });
-      var header = el('div', 'card-actions');
-      if (s.unlocks.autoSell) {
-        header.appendChild(U.segmented([
-          { value: 'sell', label: 'מכירה', title: 'הקשה מוכרת את כל הערימה' },
-          { value: 'auto', label: '⟳ אוטומטי', title: 'הקשה מסמנת משאב למכירה אוטומטית' }
-        ], s.settings.invMode || 'sell', function (v) {
-          s.settings.invMode = v; G.UI.haptic(10); G.UI.refresh();
-        }));
-      }
-      header.appendChild(sellAllBtn);
-
-      var ic = U.card('המחסן', ids.length ? num.fmt(G.Market.inventoryValue(s, o)) + ' ז׳ בשווי' : '',
-                      { right: header, tight: true });
-      if (!ids.length) {
-        ic.body.appendChild(U.empty('המחסן ריק. הכורה עובד — תן לו רגע.'));
-      } else {
-        var grid = el('div', 'inv-grid');
-        var autoMode = s.unlocks.autoSell && s.settings.invMode === 'auto';
-        for (i = 0; i < ids.length; i++) {
-          (function (id) {
-            var unit = G.Market.unitPrice(s, id, o);
-            var factor = G.Market.factor(s, id);
-            grid.appendChild(U.resChip(id, s.inv[id], {
-              button: true,
-              subtitle: num.fmtCount(s.inv[id]) + ' · ' + num.fmt(unit) + 'ז׳',
-              title: (autoMode ? 'הקשה מסמנת למכירה אוטומטית' : 'הקשה מוכרת') +
-                     (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
-              selling: !!s.autoSell[id],
-              onClick: function () {
-                if (autoMode) {
-                  s.autoSell[id] = !s.autoSell[id];
-                  G.UI.haptic(14);
-                  G.UI.toast(s.autoSell[id] ? '⟳' : '✋',
-                             G.res(id).name,
-                             s.autoSell[id] ? 'יימכר אוטומטית' : 'מכירה אוטומטית בוטלה');
-                } else {
-                  var got = G.Market.sell(s, id, s.inv[id], o);
-                  if (got > 0) {
-                    G.UI.haptic(12);
-                    G.UI.toast('🪙', G.res(id).name, '+' + num.fmt(got) + ' זהב');
-                  }
-                }
-                game.refresh(); G.UI.refresh();
-              }
-            }));
-          })(ids[i]);
-        }
-        ic.body.appendChild(grid);
-      }
-      f.appendChild(ic);
       return f;
     }
   };

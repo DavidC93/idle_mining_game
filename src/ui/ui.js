@@ -158,9 +158,17 @@
       // Preserve scroll position across the rebuild so shopping does not jump.
       var scroller = document.getElementById('panel-scroll');
       var top = scroller.scrollTop;
+      /* A panel can ask to fit instead of scroll; the mine screen does, because
+         it is the one the player watches and it should never move under a
+         thumb. Below a usable height — a short landscape phone, a small desktop
+         window — fitting would mean clipping, so scrolling comes back rather
+         than the content going missing. The threshold is the fitted layout's
+         own minimum: two action tiles, a card header and two rows of chips. */
+      var fits = !!panel.noScroll && scroller.clientHeight >= 240;
+      scroller.classList.toggle('no-scroll', fits);
       U.clear(host);
       host.appendChild(panel.build(this.game));
-      scroller.scrollTop = top;
+      scroller.scrollTop = fits ? 0 : top;
     },
 
     refresh: function () { this.dirty = true; },
@@ -236,6 +244,7 @@
           this.dirty = false;
           this.buildTabs();
           this.renderPanel();
+          this.refreshModal();
           this.applyStageView();
         }
       }
@@ -249,7 +258,9 @@
       var a = document.activeElement;
       if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
         var side = document.getElementById('side');
+        var modal = document.getElementById('modal-root');
         if (side && side.contains(a)) return true;
+        if (modal && !modal.hidden && modal.contains(a)) return true;
       }
       return false;
     },
@@ -271,7 +282,7 @@
       banner.hidden = false;
       setText('gate-title', 'מחסום ב־' + num.fmtDepth(cap));
       setText('gate-sub', 'כדי לפרוץ אל ' + blockedStratum.name + ' דרוש ' + needPick.name +
-                         '. חשל אותו בלשונית "המכרה".');
+                         '. חשל אותו בכפתור "המכוש".');
     },
 
     /* ---- top bar controls ------------------------------------------------ */
@@ -286,12 +297,14 @@
          pointer comes back up, so a press always reaches the element it
          started on. The timeout is a safety net for a pointerup that never
          arrives (dragged out of the window, lost capture). */
-      var side = document.getElementById('side');
-      side.addEventListener('pointerdown', function () {
+      function holdRebuilds() {
         self.pointerDown = true;
         clearTimeout(self._pdTimer);
         self._pdTimer = setTimeout(function () { self.pointerDown = false; }, 4000);
-      }, true);
+      }
+      document.getElementById('side').addEventListener('pointerdown', holdRebuilds, true);
+      // The modal is a live surface too now, so it needs the same protection.
+      document.getElementById('modal-root').addEventListener('pointerdown', holdRebuilds, true);
 
       function release() {
         if (!self.pointerDown) return;
@@ -410,7 +423,34 @@
       root.hidden = false;
     },
 
-    closeModal: function () { document.getElementById('modal-root').hidden = true; },
+    /* A modal whose contents keep up with the game.
+
+       The warehouse and the pickaxe both live in modals now, and both show
+       numbers that the act of using them changes: sell a stack and its chip
+       should go, forge a pickaxe and the next tier should appear. Remembering
+       the builder lets the normal refresh cycle rebuild the open modal exactly
+       the way it rebuilds a panel — including the mid-press guard, so a rebuild
+       never yanks a button out from under a finger. */
+    openLiveModal: function (title, buildBody) {
+      this.liveModal = { title: title, build: buildBody };
+      this.openModal(title, buildBody);
+    },
+
+    refreshModal: function () {
+      if (!this.liveModal) return;
+      var root = document.getElementById('modal-root');
+      if (root.hidden) { this.liveModal = null; return; }
+      var body = document.getElementById('modal-body');
+      var top = body.scrollTop;
+      U.clear(body);
+      this.liveModal.build(body);
+      body.scrollTop = top;
+    },
+
+    closeModal: function () {
+      this.liveModal = null;
+      document.getElementById('modal-root').hidden = true;
+    },
 
     confirmPrestige: function (gain) {
       var self = this;
