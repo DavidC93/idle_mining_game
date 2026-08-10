@@ -19,7 +19,27 @@
     return p;
   }
 
+  /* A locked resource is never sold, by any route.
+
+     Enforced here rather than at each button, because "sell" has four callers —
+     the inventory chip, sell-all, the auto-seller and the headless tools — and
+     a lock the player set is worthless if any one of them forgets to ask. */
+  function locked(s, id) {
+    return !!(s.locked && s.locked[id]);
+  }
+
+  function setLocked(s, id, on) {
+    if (!s.locked) s.locked = {};
+    if (on) s.locked[id] = 1; else delete s.locked[id];
+    return locked(s, id);
+  }
+
+  function toggleLock(s, id) {
+    return setLocked(s, id, !locked(s, id));
+  }
+
   function sell(s, id, qty, o) {
+    if (locked(s, id)) return 0;
     qty = Math.min(qty, s.inv[id] || 0);
     if (qty <= 0) return 0;
     var gross = 0;
@@ -75,8 +95,8 @@
     return total;
   }
 
-  /* Total liquidation value of the current inventory — used by the HUD and by
-     the prestige screen so the player can see what a reset is worth. */
+  /* Total liquidation value of the current inventory — used by the prestige
+     screen, where locks are beside the point because a reset takes everything. */
   function inventoryValue(s, o) {
     var total = 0;
     for (var id in s.inv) {
@@ -86,8 +106,22 @@
     return total;
   }
 
+  /* What the warehouse would actually pay out right now. Anything the player
+     has locked is not for sale, so quoting it as "worth X" would be a lie the
+     next tap on "sell everything" immediately exposes. */
+  function sellableValue(s, o) {
+    var total = 0;
+    for (var id in s.inv) {
+      if (!s.inv.hasOwnProperty(id) || locked(s, id)) continue;
+      total += unitPrice(s, id, o) * s.inv[id];
+    }
+    return total;
+  }
+
   G.Market = {
     unitPrice: unitPrice, sell: sell, sellAll: sellAll, tick: tick,
-    autoSellTick: autoSellTick, inventoryValue: inventoryValue, factor: factor
+    autoSellTick: autoSellTick, inventoryValue: inventoryValue,
+    sellableValue: sellableValue, factor: factor,
+    locked: locked, setLocked: setLocked, toggleLock: toggleLock
   };
 })(typeof globalThis.MG !== 'undefined' ? globalThis.MG : (globalThis.MG = {}));

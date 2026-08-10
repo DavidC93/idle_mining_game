@@ -149,6 +149,7 @@
     node.title = r.name + (opts.title ? ' — ' + opts.title : '');
     if (opts.onClick) node.addEventListener('click', opts.onClick);
     if (opts.selling) node.classList.add('selling');
+    if (opts.locked) node.classList.add('locked-res');
     return node;
   }
 

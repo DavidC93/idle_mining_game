@@ -29,6 +29,7 @@
       forge: { jobs: [], auto: null },
       crew: {},           // typeId -> array of stratum indices
       autoSell: {},
+      locked: {},         // resId -> 1 while the player has it held back from sale
       market: {},         // resId -> price factor (1 = normal)
       contracts: { active: [], nextRoll: 0 },
 

@@ -523,25 +523,29 @@ button:not(:disabled):active { transform: scale(.965); }
 
 /* Segmented mode switch — the touch replacement for Shift+click. */
 .segmented {
-  display: inline-flex;
-  background: #0e1220;
-  border: 1px solid var(--line-soft);
+  /* Three modes have to fit a 390px phone beside "sell all", so the control
+     shrinks with the space instead of pushing its neighbour off the row. */
+  display: flex; min-width: 0; flex: 1 1 auto;
+  background: #0a1224;
+  border: 2px solid var(--outline);
   border-radius: 999px;
   padding: 2px;
 }
 .seg {
-  padding: 5px 11px;
+  flex: 1 1 0; min-width: 0;
+  padding: 5px 9px;
   border-radius: 999px;
-  font-size: 11px;
-  color: var(--ink-3);
+  font-size: 11px; font-weight: 600;
+  color: var(--ink-2);
   transition: .14s;
   min-height: 30px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .seg.on {
-  background: linear-gradient(180deg, var(--gold), var(--gold-2));
-  color: #241701;
-  font-weight: 700;
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(180deg, #ffe071, var(--gold-2));
+  color: #3a2400;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), var(--shadow-sm);
 }
 
 .row-icon {
@@ -723,6 +727,24 @@ button:not(:disabled):active { transform: scale(.965); }
 }
 .inv-item.selling::after {
   content: '⟳'; margin-inline-start: auto; color: var(--ok); font-size: 13px;
+}
+
+/* Locked: held back from every sale. Read as "set aside" rather than
+   "disabled" — the stack is still yours and still counted, it just is not for
+   sale, so it stays fully legible instead of being dimmed out. */
+.inv-item.locked-res {
+  background: linear-gradient(180deg, #3d3157, #2a2140);
+  box-shadow: inset 0 0 0 1px rgba(207,135,255,.45),
+              inset 0 2px 0 rgba(255,255,255,.12), var(--shadow-sm);
+}
+.inv-item.locked-res::after {
+  content: '🔒'; margin-inline-start: auto; font-size: 12px; opacity: .95;
+}
+
+/* While picking what to lock, the untouched chips invite a tap. */
+.inv-grid.picking .inv-item:not(.locked-res) {
+  border-style: dashed;
+  border-color: var(--line);
 }
 
 /* at-a-glance status chips (forge fuel / slots / speed) */

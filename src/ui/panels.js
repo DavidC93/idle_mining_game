@@ -136,54 +136,93 @@
     var ids = Object.keys(s.inv).filter(function (k) { return s.inv[k] > 0; });
     ids.sort(function (a, b) { return G.res(b).value * s.inv[b] - G.res(a).value * s.inv[a]; });
 
+    /* Modes. `lock` is always available — it is the safety net for the sell
+       button, so gating it behind an unlock would be backwards. */
+    var mode = s.settings.invMode || 'sell';
+    if (mode === 'auto' && !s.unlocks.autoSell) mode = 'sell';
+    var lockMode = mode === 'lock', autoMode = mode === 'auto';
+
+    var lockedCount = 0, lockedWorth = 0;
+    for (i = 0; i < ids.length; i++) {
+      if (G.Market.locked(s, ids[i])) {
+        lockedCount++;
+        lockedWorth += G.Market.unitPrice(s, ids[i], o) * s.inv[ids[i]];
+      }
+    }
+
     var head = el('div', 'sheet-hero');
     head.appendChild(el('div', 'sheet-hero-icon', '📦'));
     var ht = el('div');
-    ht.appendChild(el('b', null, num.fmt(G.Market.inventoryValue(s, o)) + ' ז׳'));
-    ht.appendChild(el('small', null, ids.length ? 'שווי כל המחסן' : 'המחסן ריק'));
+    // The sellable figure, not the total: quoting locked stock as "worth X"
+    // is a claim the next tap on "sell everything" immediately contradicts.
+    ht.appendChild(el('b', null, num.fmt(G.Market.sellableValue(s, o)) + ' ז׳'));
+    ht.appendChild(el('small', null,
+      !ids.length ? 'המחסן ריק'
+                  : lockedCount ? 'למכירה · ' + lockedCount + ' נעולים (' + num.fmt(lockedWorth) + ' ז׳)'
+                                : 'שווי כל המחסן'));
     head.appendChild(ht);
     body.appendChild(head);
 
     var actions = el('div', 'sheet-actions');
+    var modes = [{ value: 'sell', label: 'מכירה', title: 'הקשה מוכרת את כל הערימה' }];
     if (s.unlocks.autoSell) {
-      actions.appendChild(U.segmented([
-        { value: 'sell', label: 'מכירה', title: 'הקשה מוכרת את כל הערימה' },
-        { value: 'auto', label: '⟳ אוטומטי', title: 'הקשה מסמנת משאב למכירה אוטומטית' }
-      ], s.settings.invMode || 'sell', function (v) {
-        s.settings.invMode = v; G.UI.haptic(10); G.UI.refresh();
-      }));
+      modes.push({ value: 'auto', label: '⟳ אוטו', title: 'הקשה מסמנת משאב למכירה אוטומטית' });
     }
+    modes.push({ value: 'lock', label: '🔒 נעילה', title: 'הקשה נועלת משאב — ונעולים לא נמכרים' });
+    actions.appendChild(U.segmented(modes, mode, function (v) {
+      s.settings.invMode = v; G.UI.haptic(10); G.UI.refresh();
+    }));
+
     actions.appendChild(U.button('מכור הכל', 'sm', function () {
       var got = G.Market.sellAll(s, function (id) { return !G.res(id).fuel; }, o);
       if (got > 0) G.UI.toast('🪙', 'נמכר', num.fmt(got) + ' זהב');
+      else G.UI.toast('🔒', 'לא נמכר כלום', 'אין מה למכור — נעול, דלק, או ריק');
       G.UI.haptic(14);
       game.refresh(); G.UI.refresh();
     }));
     body.appendChild(actions);
+
+    if (lockMode) {
+      body.appendChild(el('div', 'muted sheet-note',
+        'בחר משאבים כדי לנעול אותם. משאב נעול לא יימכר בהקשה, ב"מכור הכל" או במכירה אוטומטית. הקשה נוספת משחררת.'));
+    }
 
     if (!ids.length) {
       body.appendChild(U.empty('המחסן ריק. הכורה עובד — תן לו רגע.'));
       return;
     }
 
-    var autoMode = s.unlocks.autoSell && s.settings.invMode === 'auto';
-    var grid = el('div', 'inv-grid');
+    var grid = el('div', 'inv-grid' + (lockMode ? ' picking' : ''));
     for (i = 0; i < ids.length; i++) {
       (function (id) {
         var qty = s.inv[id];
+        var isLocked = G.Market.locked(s, id);
         /* The stack's worth, not one unit's. "5 gold each" made the player do
            the multiplication to answer the only question they actually have,
            which is what tapping this chip pays out. */
         var stack = G.Market.unitPrice(s, id, o) * qty;
         var factor = G.Market.factor(s, id);
+        var hint = lockMode ? (isLocked ? 'הקשה משחררת מנעילה' : 'הקשה נועלת')
+                 : isLocked ? 'נעול — לא יימכר עד שתשחרר'
+                 : autoMode ? 'הקשה מסמנת למכירה אוטומטית'
+                 : 'הקשה מוכרת את כל הערימה';
         grid.appendChild(U.resChip(id, qty, {
           button: true,
           subtitle: num.fmtCount(qty) + ' · ' + num.fmt(stack) + 'ז׳',
-          title: (autoMode ? 'הקשה מסמנת למכירה אוטומטית' : 'הקשה מוכרת את כל הערימה') +
-                 (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
-          selling: !!s.autoSell[id],
+          title: hint + (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
+          selling: !lockMode && !isLocked && !!s.autoSell[id],
+          locked: isLocked,
           onClick: function () {
-            if (autoMode) {
+            if (lockMode) {
+              var now = G.Market.toggleLock(s, id);
+              G.UI.haptic(now ? 18 : 10);
+              G.UI.toast(now ? '🔒' : '🔓', G.res(id).name,
+                         now ? 'נעול — לא יימכר' : 'שוחרר');
+            } else if (isLocked) {
+              // Refuse loudly. Silence here reads as a dead button.
+              G.UI.haptic(6);
+              G.UI.toast('🔒', G.res(id).name, 'נעול. פתח דרך מצב הנעילה.');
+            } else if (autoMode) {
               s.autoSell[id] = !s.autoSell[id];
               G.UI.haptic(14);
               G.UI.toast(s.autoSell[id] ? '⟳' : '✋', G.res(id).name,

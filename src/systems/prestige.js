@@ -62,7 +62,9 @@
       settings: s.settings,
       startedAt: s.startedAt,
       unlocks: s.unlocks,
-      autoSell: s.autoSell
+      autoSell: s.autoSell,
+      // A lock is a standing preference like auto-sell, not run progress.
+      locked: s.locked
     };
 
     // Talent-preserved inventory, computed before the wipe.
