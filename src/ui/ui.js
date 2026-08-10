@@ -269,17 +269,28 @@
        the game: without it a blocked player just sees the depth number stop. */
     updateGate: function (s) {
       var banner = document.getElementById('gate-banner');
-      if (this.stage.view !== 'mine') { banner.hidden = true; return; }
+      /* Toasts stack from the top of the stage on a phone, which is exactly
+         where this banner lives. The class lets the CSS move them out of its
+         way rather than letting a transient notification bury the one line
+         telling the player why their depth stopped.
+
+         It goes on <body>: #toasts is a sibling of #app, not a descendant, so
+         a flag set on #app is invisible to it. */
+      function show(on) {
+        banner.hidden = !on;
+        document.body.classList.toggle('gated', !!on);
+      }
+      if (this.stage.view !== 'mine') { show(false); return; }
       var cap = G.Stats.depthCap(s);
-      if (!isFinite(cap) || s.frontier < cap - 0.5) { banner.hidden = true; return; }
+      if (!isFinite(cap) || s.frontier < cap - 0.5) { show(false); return; }
 
       var blockedStratum = null;
       for (var i = 0; i < G.STRATA.length; i++) {
         if (G.STRATA[i].minDepth === cap) { blockedStratum = G.STRATA[i]; break; }
       }
-      if (!blockedStratum) { banner.hidden = true; return; }
+      if (!blockedStratum) { show(false); return; }
       var needPick = G.PICKAXES[blockedStratum.gate];
-      banner.hidden = false;
+      show(true);
       setText('gate-title', 'מחסום ב־' + num.fmtDepth(cap));
       setText('gate-sub', 'כדי לפרוץ אל ' + blockedStratum.name + ' דרוש ' + needPick.name +
                          '. חשל אותו בכפתור "המכוש".');

@@ -28,20 +28,41 @@
     }
   }
 
-  /* Render `a` and `b` with just enough precision to tell them apart.
+  /* Render `a` and `b` at a precision set by the size of the change.
 
-     The default formatter keeps three significant digits, which is right for a
-     HUD and wrong for a preview: a 1%-per-level upgrade at 1.00 swings/second
-     renders both sides as "1", so the row claims the purchase does nothing.
-     Widening the decimals until the two strings differ keeps every other
-     readout exactly as it was. */
+     "Widen until the two strings differ" is not enough. At 1% a level, swing
+     speed goes 1.5498 → 1.5653, and one decimal already tells those apart — as
+     "1.5 → 1.6", which claims a step six times the real one and then shows the
+     very next level as "1.56 → 1.58". Choosing the precision from the delta
+     instead makes consecutive levels agree with each other and with the truth.
+
+     The scale term handles the suffix range, where fmt formats the mantissa:
+     1200 → 1210 is a delta of 10, but what gets printed is 1.20K → 1.21K. */
+  function decimalsFor(a, b) {
+    var delta = Math.abs(b - a);
+    if (!(delta > 0)) return undefined;
+    var mag = Math.max(Math.abs(a), Math.abs(b));
+    var scale = mag >= 1000 ? Math.pow(1000, Math.floor(Math.log10(mag) / 3)) : 1;
+    var scaledMag = mag / scale;
+    /* What fmt would have picked on its own — never show less than that. The
+       fractional test looks at both values, not just the larger: 1.5 → 3 has an
+       integer maximum, and trusting it alone rounds the pair to "2 → 3". */
+    var fractional = (a % 1 !== 0) || (b % 1 !== 0);
+    var base = scale > 1 ? (scaledMag < 10 ? 2 : (scaledMag < 100 ? 1 : 0))
+                         : (scaledMag < 10 && fractional ? 1 : 0);
+    return num.clamp(Math.max(base, Math.ceil(-Math.log10(delta / scale))), 0, 6);
+  }
+
   function fmtPair(a, b, kind) {
-    for (var d = undefined, i = 0; i < 4; i++) {
+    var d = decimalsFor(a, b);
+    // Backstop: rounding can still collide (a delta that straddles a boundary),
+    // and a row claiming the purchase changes nothing is the bug we started from.
+    for (var i = 0; i < 4; i++) {
       var sa = fmtReadout(a, kind, d), sb = fmtReadout(b, kind, d);
       if (sa !== sb) return [sa, sb];
       d = (d === undefined ? 1 : d) + 1;
     }
-    return [fmtReadout(a, kind), fmtReadout(b, kind)];
+    return [fmtReadout(a, kind, d), fmtReadout(b, kind, d)];
   }
 
   /* "label: current → next", with the delta coloured by whether it helps. */

@@ -352,10 +352,16 @@ button:not(:disabled):active { transform: scale(.965); }
   background: linear-gradient(180deg, #ffe071, var(--gold-2));
   box-shadow: inset 0 2px 0 rgba(255,255,255,.5), 0 0 16px rgba(255,210,63,.35);
 }
-.tab .dot {
+/* The dot has to carry its own appearance. It used to get size and colour
+   only from `.tab .dot`, so the copies inside the overflow sheet — which only
+   had a position rule — rendered as 0x0 invisible elements. The "עוד" button
+   would light up and the sheet it opened would show nothing, which reads as
+   the notification lying to you. */
+.dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--ok);
   box-shadow: 0 0 6px var(--ok);
+  flex: none;
 }
 
 .tab-more { color: var(--ink-2); }
@@ -367,7 +373,7 @@ button:not(:disabled):active { transform: scale(.965); }
 .more-panel {
   position: relative; width: 100%;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  border-top: 1px solid var(--line);
+  border-top: 3px solid var(--outline);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -10px 30px rgba(0,0,0,.5);
   animation: sheetUp .2s cubic-bezier(.2,.9,.3,1.1);
@@ -385,11 +391,16 @@ button:not(:disabled):active { transform: scale(.965); }
   padding: 12px 13px;
   border-radius: 12px;
   background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
-  border: 1px solid var(--line-soft);
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.13), var(--shadow-sm);
   min-height: 54px;
   text-align: start;
 }
-.more-item.active { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,201,60,.22); }
+.more-item.active {
+  background: linear-gradient(180deg, #ffe071, var(--gold-2));
+  color: #3a2400;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.5), 0 0 16px rgba(255,210,63,.35);
+}
 .more-icon { font-size: 21px; }
 .more-item .dot { position: absolute; top: 8px; inset-inline-end: 10px; }
 
@@ -959,8 +970,10 @@ button:not(:disabled):active { transform: scale(.965); }
   /* One compact line each, translucent, capped at two (see UI.toast). On a
      42vh stage anything bigger hides the thing it is reporting on. */
   /* Below the station selector, not on top of it. Pinned to the top edge they
-     covered the one control the stage actually has. */
+     covered the one control the stage actually has — and when the wall banner
+     is up they step down again rather than burying it. */
   #toasts { top: 104px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 4px; }
+  body.gated #toasts { top: 200px; }
   .toast {
     padding: 5px 10px; font-size: 11px; gap: 7px;
     background: rgba(20,25,40,.82);

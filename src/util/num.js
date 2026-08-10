@@ -18,7 +18,9 @@
     n = Math.abs(n);
     if (n < 1000) {
       var d = decimals !== undefined ? decimals : (n < 10 && n % 1 !== 0 ? 1 : 0);
-      return (neg ? '-' : '') + trimZeros(n.toFixed(d));
+      // An explicit precision is a request, so keep the trailing zeros: a pair
+      // rendered as "1.50 → 1.57" lines up, "1.5 → 1.57" reads as a typo.
+      return (neg ? '-' : '') + (decimals !== undefined ? n.toFixed(d) : trimZeros(n.toFixed(d)));
     }
     var tier = Math.floor(Math.log10(n) / 3);
     if (tier >= SUFFIX.length) {
@@ -27,7 +29,8 @@
     var scaled = n / Math.pow(1000, tier);
     var dec = decimals !== undefined ? decimals
                                      : (scaled < 10 ? 2 : (scaled < 100 ? 1 : 0));
-    return (neg ? '-' : '') + trimZeros(scaled.toFixed(dec)) + SUFFIX[tier];
+    var body = decimals !== undefined ? scaled.toFixed(dec) : trimZeros(scaled.toFixed(dec));
+    return (neg ? '-' : '') + body + SUFFIX[tier];
   }
 
   function trimZeros(s) {
