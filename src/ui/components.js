@@ -150,6 +150,8 @@
     if (opts.onClick) node.addEventListener('click', opts.onClick);
     if (opts.selling) node.classList.add('selling');
     if (opts.locked) node.classList.add('locked-res');
+    // Listed but not held: still a control, just not stock.
+    if (opts.empty) node.classList.add('empty-res');
     return node;
   }
 

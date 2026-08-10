@@ -758,6 +758,12 @@ button:not(:disabled):active { transform: scale(.965); }
   border-color: var(--line);
 }
 
+/* On the list without any stock behind it — an auto-sell or lock flag whose
+   pile is currently empty. Faded so it does not read as inventory, but still
+   plainly a button, because it is the only way to clear the flag. */
+.inv-item.empty-res { opacity: .62; }
+.inv-item.empty-res .res-icon { filter: grayscale(.55) opacity(.8); }
+
 /* at-a-glance status chips (forge fuel / slots / speed) */
 .forge-status { display: flex; gap: 6px; }
 .stat-chip {

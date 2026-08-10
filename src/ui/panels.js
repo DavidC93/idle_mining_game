@@ -153,9 +153,27 @@
   /* ---- the warehouse sheet ------------------------------------------------ */
 
   function buildWarehouseBody(game, body) {
-    var s = game.s, o = game.o, i;
-    var ids = Object.keys(s.inv).filter(function (k) { return s.inv[k] > 0; });
-    ids.sort(function (a, b) { return G.res(b).value * s.inv[b] - G.res(a).value * s.inv[a]; });
+    var s = game.s, o = game.o, i, id;
+
+    /* What to list.
+
+       Stock alone is not enough. Flagging a resource for auto-sale sells it on
+       the very next tick, the stack drops to zero, and a list of "things you
+       are holding" drops the chip — leaving no way to un-flag it, because the
+       only control for the flag was the chip that just disappeared. A marked
+       resource therefore stays on the list whether or not any of it is in the
+       warehouse right now; the same goes for a locked one, so a lock is never
+       stranded either. */
+    var seen = {}, ids = [];
+    function consider(k) { if (!seen[k] && G.res(k)) { seen[k] = 1; ids.push(k); } }
+    for (id in s.inv) { if (s.inv[id] > 0) consider(id); }
+    for (id in s.autoSell) { if (s.autoSell[id]) consider(id); }
+    for (id in s.locked || {}) { if (s.locked[id]) consider(id); }
+
+    function qtyOf(k) { return s.inv[k] || 0; }
+    ids.sort(function (a, b) {
+      return G.res(b).value * qtyOf(b) - G.res(a).value * qtyOf(a);
+    });
 
     /* Modes. `lock` is always available — it is the safety net for the sell
        button, so gating it behind an unlock would be backwards. */
@@ -163,11 +181,12 @@
     if (mode === 'auto' && !s.unlocks.autoSell) mode = 'sell';
     var lockMode = mode === 'lock', autoMode = mode === 'auto';
 
-    var lockedCount = 0, lockedWorth = 0;
+    var lockedCount = 0, lockedWorth = 0, held = 0;
     for (i = 0; i < ids.length; i++) {
+      if (qtyOf(ids[i]) > 0) held++;
       if (G.Market.locked(s, ids[i])) {
         lockedCount++;
-        lockedWorth += G.Market.unitPrice(s, ids[i], o) * s.inv[ids[i]];
+        lockedWorth += G.Market.unitPrice(s, ids[i], o) * qtyOf(ids[i]);
       }
     }
 
@@ -178,9 +197,9 @@
     // is a claim the next tap on "sell everything" immediately contradicts.
     ht.appendChild(el('b', null, num.fmt(G.Market.sellableValue(s, o)) + ' ז׳'));
     ht.appendChild(el('small', null,
-      !ids.length ? 'המחסן ריק'
-                  : lockedCount ? 'למכירה · ' + lockedCount + ' נעולים (' + num.fmt(lockedWorth) + ' ז׳)'
-                                : 'שווי כל המחסן'));
+      !held ? 'המחסן ריק'
+            : lockedCount ? 'למכירה · ' + lockedCount + ' נעולים (' + num.fmt(lockedWorth) + ' ז׳)'
+                          : 'שווי כל המחסן'));
     head.appendChild(ht);
     body.appendChild(head);
 
@@ -216,8 +235,9 @@
     var grid = el('div', 'inv-grid' + (lockMode ? ' picking' : ''));
     for (i = 0; i < ids.length; i++) {
       (function (id) {
-        var qty = s.inv[id];
+        var qty = qtyOf(id);
         var isLocked = G.Market.locked(s, id);
+        var isAuto = !!s.autoSell[id];
         /* The stack's worth, not one unit's. "5 gold each" made the player do
            the multiplication to answer the only question they actually have,
            which is what tapping this chip pays out. */
@@ -225,14 +245,20 @@
         var factor = G.Market.factor(s, id);
         var hint = lockMode ? (isLocked ? 'הקשה משחררת מנעילה' : 'הקשה נועלת')
                  : isLocked ? 'נעול — לא יימכר עד שתשחרר'
-                 : autoMode ? 'הקשה מסמנת למכירה אוטומטית'
+                 : autoMode ? (isAuto ? 'הקשה מבטלת מכירה אוטומטית' : 'הקשה מסמנת למכירה אוטומטית')
                  : 'הקשה מוכרת את כל הערימה';
+        // A stack that is being auto-sold sits at zero almost all the time.
+        // Say what it is doing instead of quoting a worth of nothing.
+        var sub = (qty > 0 || !isAuto)
+          ? num.fmtCount(qty) + ' · ' + num.fmt(stack) + 'ז׳'
+          : 'נמכר מיד';
         grid.appendChild(U.resChip(id, qty, {
           button: true,
-          subtitle: num.fmtCount(qty) + ' · ' + num.fmt(stack) + 'ז׳',
+          subtitle: sub,
           title: hint + (factor < 0.99 ? ' (מחיר שוק ' + Math.round(factor * 100) + '%)' : ''),
-          selling: !lockMode && !isLocked && !!s.autoSell[id],
+          selling: !lockMode && !isLocked && isAuto,
           locked: isLocked,
+          empty: qty <= 0,
           onClick: function () {
             if (lockMode) {
               var now = G.Market.toggleLock(s, id);
