@@ -335,24 +335,39 @@ ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
    layer's rare drop should be a find, not a staple, and no layer should dump
    a pile of brand-new resources on you at once. */
 {
-  const MAX_RARE_SHARE = 0.10;
-  const MIN_RARE_SHARE = 0.02;
-  let worstRare = 0, worstLayer = '';
+  /* Rare share is a curve, not a number: generous at the surface so the first
+     pickaxe is reachable, tight at the bottom so a rare find still means
+     something. What matters is the shape — it must only ever go down. */
+  const MAX_RARE_SHARE = 0.24;      // surface
+  const MIN_RARE_SHARE = 0.02;      // core
+  const DEEPEST_ALLOWED = 0.09;     // the last layer must actually feel rare
+  const shares = [];
   for (const st of G.STRATA) {
     const total = st.drops.reduce((a, d) => a + d.w, 0);
     const rare = st.drops.filter(d => d.rarity === 'rare').reduce((a, d) => a + d.w, 0);
     const share = rare / total;
-    if (share > worstRare) { worstRare = share; worstLayer = st.name; }
+    shares.push({ id: st.id, name: st.name, share });
+    if (share > MAX_RARE_SHARE) {
+      err(`stratum ${st.id}: rare drops are ${(share * 100).toFixed(1)}% — not rare`);
+    }
     if (rare > 0 && share < MIN_RARE_SHARE) {
       warn(`stratum ${st.id}: rare drops are ${(share * 100).toFixed(1)}% — so rare they read as broken`);
     }
     const fresh = st.drops.filter(d => d.rarity !== 'carry').length;
     if (fresh > 3) err(`stratum ${st.id} introduces ${fresh} new resources at once`);
   }
-  if (worstRare > MAX_RARE_SHARE) {
-    err(`rare drops reach ${(worstRare * 100).toFixed(1)}% at "${worstLayer}" — not rare`);
+  for (let i = 1; i < shares.length; i++) {
+    if (shares[i].share > shares[i - 1].share + 1e-9) {
+      err(`rare drops get MORE common with depth at "${shares[i].name}" ` +
+          `(${(shares[i - 1].share * 100).toFixed(1)}% → ${(shares[i].share * 100).toFixed(1)}%)`);
+    }
+  }
+  const last = shares[shares.length - 1];
+  if (last.share > DEEPEST_ALLOWED) {
+    err(`the deepest layer still drops rares ${(last.share * 100).toFixed(1)}% of the time`);
   } else {
-    ok.push(`rare drops peak at ${(worstRare * 100).toFixed(1)}% of rolls, max 3 new resources per layer`);
+    ok.push(`rare drops taper ${(shares[0].share * 100).toFixed(1)}% → ` +
+            `${(last.share * 100).toFixed(1)}% with depth, max 3 new resources per layer`);
   }
 
   // Luck must bias the rarity roll, not hand the player the next layer.

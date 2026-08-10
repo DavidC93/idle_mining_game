@@ -4,43 +4,57 @@
    ============================================================ */
 
 :root {
-  /* Deep indigo rather than neutral grey: it lets the warm lamp/gold accents
-     read as warm, which flat greys never do. */
-  --bg:        #0b0d16;
-  --bg-2:      #121623;
-  --panel:     #181d2e;
-  --panel-2:   #212840;
-  --panel-3:   #2b3352;
-  --line:      #333d5e;
-  --line-soft: #262e49;
+  /* Saturated cobalt rather than near-black indigo. The genre this game sits in
+     — Idle Miner, Tap Titans and friends — is built out of strong colour, thick
+     dark outlines and chunky bevels, and the previous palette was so desaturated
+     that every surface read as the same grey slab no matter what was on it.
+     These blues carry actual chroma, so gold, emerald and cyan land on top of
+     them as accents instead of as the only colour on screen. */
+  --bg:        #101a33;
+  --bg-2:      #16244a;
+  --panel:     #1d2f5e;
+  --panel-2:   #274076;
+  --panel-3:   #33528f;
+  --line:      #4a72c0;
+  --line-soft: #2f4c8c;
+  /* The dark keyline that makes casual-game UI read as cut-out shapes. */
+  --outline:   #0a1224;
 
-  --ink:       #e8ecf4;
-  --ink-2:     #9aa5b8;
-  --ink-3:     #626d80;
+  --ink:       #ffffff;
+  --ink-2:     #bcd0f2;
+  --ink-3:     #8aa3d0;
 
-  --gold:      #ffc93c;
-  --gold-2:    #ff9f1c;
-  --gold-dim:  #96701d;
-  --core:      #56ddff;
-  --core-2:    #3aa8ff;
-  --ok:        #46e08a;
-  --ok-2:      #16b06a;
-  --warn:      #ffa23a;
+  --gold:      #ffd23f;
+  --gold-2:    #ffa621;
+  --gold-dim:  #a87c1c;
+  --core:      #5fe8ff;
+  --core-2:    #33aaff;
+  --ok:        #3ce87f;
+  --ok-2:      #14b862;
+  --warn:      #ffab35;
   --bad:       #ff5f7a;
-  --rare:      #c07bff;
+  --rare:      #cf87ff;
   --ember:     #ff7a29;
 
-  --lamp:      #ffb960;
-  --radius:    12px;
-  --radius-sm: 8px;
+  --lamp:      #ffc472;
+  --radius:    14px;
+  --radius-sm: 10px;
   --tap:       44px;
 
   --shadow: 0 10px 30px rgba(0,0,0,.5);
-  --shadow-sm: 0 2px 0 rgba(0,0,0,.35);
-  --glow-gold: 0 0 18px rgba(255,201,60,.35);
+  /* A solid bottom lip, not a blur: this is what makes a casual-game control
+     look like a physical thing you can press. */
+  --shadow-sm: 0 3px 0 rgba(6,12,28,.55);
+  --glow-gold: 0 0 18px rgba(255,210,63,.4);
   --font: 'Segoe UI', 'Rubik', 'Heebo', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
+
+/* Headline numbers and titles carry a dark outline so they stay legible on
+   bright panels — the genre's house style, and the reason its text reads as
+   crisp at a glance. */
+.card > header b, .stat-body b, .action-tile-text b, .sheet-hero b,
+h3, h4, .modal-title { text-shadow: 0 2px 0 rgba(6,12,28,.45); }
 
 * { box-sizing: border-box; }
 
@@ -97,8 +111,8 @@ button:not(:disabled):active { transform: scale(.965); }
   flex: 0 0 auto;
   display: flex; align-items: center; gap: 12px;
   padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
-  background: linear-gradient(180deg, #1b2136, #10131f);
-  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #2b4a91, #16244a);
+  border-bottom: 3px solid var(--outline);
   box-shadow: 0 4px 20px rgba(0,0,0,.55);
   z-index: 20;
 }
@@ -125,14 +139,15 @@ button:not(:disabled):active { transform: scale(.965); }
   flex: 1 1 0; min-width: 0;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 13px;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #1a2c58, #101e3f);
+  border: 2px solid var(--outline);
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--shadow-sm);
+  box-shadow: inset 0 0 0 1px rgba(120,170,255,.3),
+              inset 0 2px 0 rgba(255,255,255,.12), var(--shadow-sm);
   white-space: nowrap;
 }
-#stat-gold  { border-color: rgba(255,201,60,.4);  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(255,201,60,.13); }
-#stat-cores { border-color: rgba(86,221,255,.42); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(86,221,255,.16); }
+#stat-gold  { box-shadow: inset 0 0 0 1px rgba(255,210,63,.55), inset 0 2px 0 rgba(255,255,255,.12), 0 3px 0 rgba(6,12,28,.55), 0 0 16px rgba(255,210,63,.22); }
+#stat-cores { box-shadow: inset 0 0 0 1px rgba(95,232,255,.55), inset 0 2px 0 rgba(255,255,255,.12), 0 3px 0 rgba(6,12,28,.55), 0 0 16px rgba(95,232,255,.25); }
 .stat-icon { font-size: 16px; opacity: .9; flex: none; }
 
 /* The numbers inside change several times a second. Without a reserved width
@@ -147,8 +162,8 @@ button:not(:disabled):active { transform: scale(.965); }
   font-variant-numeric: tabular-nums;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.stat-body b { font-size: 15px; }
-.stat-body small { font-size: 10.5px; color: var(--ink-3); }
+.stat-body b { font-size: 15px; font-weight: 800; }
+.stat-body small { font-size: 10.5px; color: var(--ink-2); }
 
 #stat-gold b {
   color: var(--gold);
@@ -170,13 +185,14 @@ button:not(:disabled):active { transform: scale(.965); }
   width: 34px; height: 34px;
   display: grid; place-items: center;
   border-radius: var(--radius-sm);
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  color: var(--ink-2);
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.14), var(--shadow-sm);
+  color: var(--ink);
   font-size: 16px;
   transition: .15s;
 }
-.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+.icon-btn:hover { filter: brightness(1.15); }
 
 /* ============ layout ============ */
 
@@ -192,7 +208,7 @@ button:not(:disabled):active { transform: scale(.965); }
 #stage {
   position: relative;
   min-width: 0;
-  background: #07090d;
+  background: #0d1730;
   overflow: hidden;
 }
 #mine-canvas {
@@ -214,16 +230,17 @@ button:not(:disabled):active { transform: scale(.965); }
   align-self: flex-start;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px;
-  background: rgba(14,17,23,.82);
+  background: rgba(22,36,74,.88);
   backdrop-filter: blur(6px);
-  border: 1px solid var(--line);
+  border: 2px solid var(--outline);
   border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), var(--shadow-sm);
   font-size: 12.5px;
 }
-#station-bar label { color: var(--ink-3); }
+#station-bar label { color: var(--ink-2); }
 #station-bar select {
   background: var(--panel-2);
-  border: 1px solid var(--line);
+  border: 2px solid var(--outline);
   border-radius: 6px;
   padding: 4px 8px;
   max-width: 190px;
@@ -232,13 +249,18 @@ button:not(:disabled):active { transform: scale(.965); }
 .chip {
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  color: var(--ink-3);
-  font-size: 11.5px;
+  background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+  color: var(--ink-2);
+  font-size: 11.5px; font-weight: 600;
   transition: .15s;
 }
-.chip.chip-on { background: rgba(242,193,78,.16); border-color: var(--gold-dim); color: var(--gold); }
+.chip.chip-on {
+  background: linear-gradient(180deg, #ffe071, var(--gold-2));
+  color: #3a2400; font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 0 12px rgba(255,210,63,.4);
+}
 
 /* Names whatever has taken over the stage (the forge, today). */
 #stage-title {
@@ -246,9 +268,9 @@ button:not(:disabled):active { transform: scale(.965); }
   align-self: center;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 16px;
-  background: rgba(12,10,18,.72);
+  background: rgba(46,22,12,.85);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,140,60,.35);
+  border: 2px solid var(--outline);
   border-radius: 999px;
   box-shadow: 0 0 20px rgba(255,140,60,.18);
   font-size: 13px;
@@ -261,25 +283,25 @@ button:not(:disabled):active { transform: scale(.965); }
   align-self: flex-start;
   display: flex; align-items: center; gap: 10px;
   padding: 9px 13px;
-  background: rgba(60,26,12,.9);
-  border: 1px solid #7a3a18;
+  background: linear-gradient(180deg, #a8461c, #6d2a0e);
+  border: 2px solid var(--outline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   max-width: min(420px, 90%);
   animation: slideIn .3s ease;
 }
 #gate-banner .gate-icon { font-size: 20px; }
-#gate-banner b { display: block; font-size: 13px; color: var(--warn); }
-#gate-banner small { color: #d9b79c; font-size: 11.5px; line-height: 1.35; }
+#gate-banner b { display: block; font-size: 13.5px; font-weight: 800; color: #ffe071; }
+#gate-banner small { color: #ffe0c8; font-size: 11.5px; line-height: 1.35; }
 
 @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 
 #ticker {
   position: absolute; inset-inline: 0; bottom: 0;
   padding: 6px 12px;
-  background: linear-gradient(180deg, transparent, rgba(7,9,13,.92) 55%);
+  background: linear-gradient(180deg, transparent, rgba(10,18,36,.92) 55%);
   font-size: 11.5px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   display: flex; flex-direction: column-reverse; gap: 2px;
   max-height: 96px; overflow: hidden;
   pointer-events: none;
@@ -296,7 +318,7 @@ button:not(:disabled):active { transform: scale(.965); }
   display: flex; flex-direction: column;
   min-height: 0; min-width: 0;
   background: var(--bg-2);
-  border-inline-start: 1px solid var(--line);
+  border-inline-start: 3px solid var(--outline);
 }
 
 /* Wrap rather than scroll. A horizontally scrolling strip pushed the last two
@@ -307,7 +329,7 @@ button:not(:disabled):active { transform: scale(.965); }
   flex: 0 0 auto;
   display: flex; gap: 3px;
   padding: 6px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 3px solid var(--outline);
 }
 
 .tab {
@@ -317,18 +339,18 @@ button:not(:disabled):active { transform: scale(.965); }
   justify-content: center;
   padding: 8px 6px 9px;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  color: var(--ink-3);
-  font-size: 12.5px;
+  color: var(--ink-2);
+  font-size: 12.5px; font-weight: 600;
   white-space: nowrap;
   display: flex; align-items: center; gap: 5px;
   transition: .15s;
 }
-.tab:hover { color: var(--ink-2); background: rgba(255,255,255,.03); }
+.tab:hover { color: var(--ink); background: rgba(255,255,255,.06); }
 .tab > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab.active {
-  color: #fff;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  box-shadow: inset 0 -3px 0 var(--gold), 0 -2px 12px rgba(255,201,60,.16);
+  color: #3a2400; font-weight: 800;
+  background: linear-gradient(180deg, #ffe071, var(--gold-2));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.5), 0 0 16px rgba(255,210,63,.35);
 }
 .tab .dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -394,10 +416,15 @@ button:not(:disabled):active { transform: scale(.965); }
 .card {
   position: relative;
   background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 46%);
-  border: 1px solid var(--line);
+  /* Two-tone edge: a dark keyline outside, a light inner rim inside. Together
+     they read as a moulded plastic panel rather than a rectangle with a
+     hairline, which is the whole visual language of the genre. */
+  border: 2px solid var(--outline);
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+  box-shadow: inset 0 0 0 1px rgba(120,170,255,.22),
+              inset 0 2px 0 rgba(255,255,255,.14),
+              0 4px 0 rgba(6,12,28,.45), 0 8px 18px rgba(0,0,0,.35);
 }
 /* A hairline of colour along the top edge — cheap, and it stops a column of
    cards reading as one undifferentiated grey slab. */
@@ -409,13 +436,13 @@ button:not(:disabled):active { transform: scale(.965); }
 .card > header {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 10px 13px;
-  background: linear-gradient(180deg, rgba(255,255,255,.05), transparent);
-  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, var(--panel-3), rgba(51,82,143,.25));
+  border-bottom: 2px solid var(--outline);
   font-size: 12.5px;
 }
 .card-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.card > header b { font-size: 13px; }
-.card > header small { color: var(--ink-3); font-size: 11px; }
+.card > header b { font-size: 13.5px; font-weight: 700; }
+.card > header small { color: var(--ink-2); font-size: 11px; }
 .card-body { padding: 10px 12px; }
 .card-body.tight { padding: 6px; }
 
@@ -451,10 +478,10 @@ button:not(:disabled):active { transform: scale(.965); }
   display: flex; align-items: center; gap: 10px;
   min-width: 0;
   padding: 10px 11px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
-  border: 1px solid var(--line-soft);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), var(--shadow-sm);
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.13), var(--shadow-sm);
   text-align: start;
   transition: transform .1s, filter .1s, border-color .15s, box-shadow .15s;
   min-height: var(--tap);
@@ -462,8 +489,10 @@ button:not(:disabled):active { transform: scale(.965); }
 .row + .row { margin-top: 7px; }
 .row:not(.locked):hover { border-color: var(--line); }
 .row.affordable {
-  border-color: rgba(70,224,138,.5);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 14px rgba(70,224,138,.12);
+  background: linear-gradient(180deg, #2f7a52, #1d5b3b);
+  box-shadow: inset 0 0 0 1px rgba(120,255,190,.4),
+              inset 0 2px 0 rgba(255,255,255,.22),
+              0 3px 0 rgba(6,28,16,.6), 0 0 16px rgba(60,232,127,.28);
 }
 .row.affordable:hover { border-color: var(--ok); box-shadow: 0 0 18px rgba(70,224,138,.22); }
 .row.locked { opacity: .42; }
@@ -748,26 +777,30 @@ button:not(:disabled):active { transform: scale(.965); }
 /* ---- buttons ---- */
 .btn {
   padding: 9px 15px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
-  border: 1px solid var(--line);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), var(--shadow-sm);
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 0 0 1px rgba(120,170,255,.25),
+              inset 0 2px 0 rgba(255,255,255,.16), var(--shadow-sm);
   color: var(--ink);
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 700;
   transition: .14s;
   min-height: 38px;
 }
-.btn:hover:not(:disabled) { filter: brightness(1.18); border-color: #47547a; }
+/* Pressing sinks the control onto its own lip. */
+.btn:not(:disabled):active { box-shadow: inset 0 2px 4px rgba(6,12,28,.5); }
+.btn:hover:not(:disabled) { filter: brightness(1.15); }
 .btn:disabled { opacity: .38; box-shadow: none; }
 .btn.primary {
-  background: linear-gradient(180deg, var(--gold), var(--gold-2));
-  border-color: #ffd977; color: #2a1a01; font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 3px 0 #8a5c11, var(--glow-gold);
+  background: linear-gradient(180deg, #ffe071, var(--gold-2));
+  border-color: var(--outline); color: #3a2400; font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(255,240,180,.7),
+              inset 0 2px 0 rgba(255,255,255,.6), 0 3px 0 #9a6410, var(--glow-gold);
 }
 .btn.primary:active:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 0 #8a5c11; }
-.btn.danger { border-color: #6b2830; color: #ff8d97; }
-.btn.danger:hover:not(:disabled) { background: #2a1418; }
+.btn.danger { background: linear-gradient(180deg, #b03348, #7d1f30); color: #ffe3e7; }
+.btn.danger:hover:not(:disabled) { filter: brightness(1.15); }
 .btn.wide { width: 100%; }
 .btn.sm { padding: 5px 10px; min-height: 30px; font-size: 11.5px; }
 
@@ -879,8 +912,8 @@ button:not(:disabled):active { transform: scale(.965); }
   #side { flex-direction: column-reverse; }
   #tabs {
     border-bottom: 0;
-    border-top: 1px solid var(--line);
-    background: linear-gradient(180deg, #141a2b, #0e1220);
+    border-top: 3px solid var(--outline);
+    background: linear-gradient(180deg, #2b4a91, #16244a);
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
     justify-content: center;
     box-shadow: 0 -6px 20px rgba(0,0,0,.4);
@@ -895,7 +928,7 @@ button:not(:disabled):active { transform: scale(.965); }
     font-size: 11px;
     min-height: 52px;
   }
-  .tab.active { box-shadow: inset 0 0 0 1px var(--gold-dim), 0 0 12px rgba(255,201,60,.2); }
+  .tab.active { box-shadow: inset 0 2px 0 rgba(255,255,255,.5), 0 0 14px rgba(255,210,63,.4); }
   .tab .dot { position: absolute; top: 5px; inset-inline-end: 8px; }
   .tab > span:first-child { font-size: 17px; }
   /* On a phone the mine is only the top strip, so full-size toasts stacked
@@ -903,7 +936,9 @@ button:not(:disabled):active { transform: scale(.965); }
      and pinned to the top edge. */
   /* One compact line each, translucent, capped at two (see UI.toast). On a
      42vh stage anything bigger hides the thing it is reporting on. */
-  #toasts { top: 52px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 4px; }
+  /* Below the station selector, not on top of it. Pinned to the top edge they
+     covered the one control the stage actually has. */
+  #toasts { top: 104px; bottom: auto; right: 8px; left: 8px; max-width: none; gap: 4px; }
   .toast {
     padding: 5px 10px; font-size: 11px; gap: 7px;
     background: rgba(20,25,40,.82);
@@ -912,7 +947,7 @@ button:not(:disabled):active { transform: scale(.965); }
   .toast .t-icon { font-size: 14px; }
   .toast b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .toast small { display: none; }
-  #side { border-inline-start: 0; border-top: 1px solid var(--line); }
+  #side { border-inline-start: 0; border-top: 3px solid var(--outline); }
   .brand-text { display: none; }
   #topbar { padding: calc(6px + env(safe-area-inset-top)) 8px 6px; gap: 7px; }
   /* Compress to fit instead of scrolling: a stat sliced in half by the screen

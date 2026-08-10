@@ -133,9 +133,11 @@
     if (topM < 30) {
       var horizon = this.worldToScreen(0);
       var sky = ctx.createLinearGradient(0, Math.min(0, horizon - 400), 0, horizon);
-      sky.addColorStop(0, '#1b2a44');
-      sky.addColorStop(0.55, '#3d4a63');
-      sky.addColorStop(1, '#6b6b62');
+      // Bright daylight sky, not dusk. The surface is the first thing a new
+      // player sees and it was the same near-black as everything else.
+      sky.addColorStop(0, '#3f9ede');
+      sky.addColorStop(0.55, '#8ccdf2');
+      sky.addColorStop(1, '#dcecc8');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, Math.max(0, horizon));
       this.drawSurface(horizon);
@@ -270,16 +272,31 @@
     ctx.rect(b.x0, 0, b.w, Math.max(0, floorY));
     ctx.clip();
 
+    /* The shaft takes up most of the screen, so its colour matters more than
+       anything else in the scene. It used to be near-black, which read as a
+       hole punched in the picture. Tinting it with the layer's own accent and
+       letting the lamp warm the middle makes it a lit space you are standing
+       in — and it changes character as you descend, for free. */
+    var pal = G.Mining.stationStratum(s).colors;
     var grad = ctx.createLinearGradient(b.x0, 0, b.x1, 0);
-    grad.addColorStop(0, '#05070a');
-    grad.addColorStop(0.5, '#0b0f16');
-    grad.addColorStop(1, '#05070a');
+    grad.addColorStop(0, mix(pal.accent, '#000000', 0.55));
+    grad.addColorStop(0.5, mix(pal.accent, '#000000', 0.18));
+    grad.addColorStop(1, mix(pal.accent, '#000000', 0.55));
     ctx.fillStyle = grad;
     ctx.fillRect(b.x0, 0, b.w, Math.max(0, floorY));
 
+    // Warm pool of lamplight down the centre of the tunnel.
+    var lamp = ctx.createRadialGradient(
+      (b.x0 + b.x1) / 2, floorY - 90, 10,
+      (b.x0 + b.x1) / 2, floorY - 90, Math.max(b.w, 260));
+    lamp.addColorStop(0, 'rgba(255,196,114,.20)');
+    lamp.addColorStop(1, 'rgba(255,196,114,0)');
+    ctx.fillStyle = lamp;
+    ctx.fillRect(b.x0, 0, b.w, Math.max(0, floorY));
+
     // Rough hewn walls: the shaft was cut, not poured. Without these the
-    // tunnel is a flat black rectangle taking up most of the screen.
-    ctx.fillStyle = 'rgba(255,255,255,.028)';
+    // tunnel is a flat rectangle taking up most of the screen.
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
     var wallStep = 17;
     var wallStart = -((this.camY * PX_PER_M) % wallStep);
     for (var wy = wallStart; wy < floorY; wy += wallStep) {

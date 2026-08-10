@@ -7,7 +7,25 @@
 
   /* ---- repeatable upgrades ---------------------------------------------- */
 
-  function upgradeCost(up, level) { return Math.ceil(up.base * Math.pow(up.rate, level)); }
+  /* The opening levels are discounted.
+
+     A pure base·rate^n curve is right for the long run and unkind at the start:
+     the very first purchase of a line costs full price while the player has
+     nothing, so the first ten minutes are spent watching a number crawl toward
+     one upgrade. Easing the first levels in — 40% of list price at level 0,
+     back to full by level 12 — changes only the opening, leaves the exponent
+     that governs pacing untouched, and keeps the curve monotonic because the
+     discount only ever shrinks. */
+  var EASE_LEVELS = 12, EASE_FLOOR = 0.4;
+
+  function easeFactor(level) {
+    if (level >= EASE_LEVELS) return 1;
+    return EASE_FLOOR + (1 - EASE_FLOOR) * (level / EASE_LEVELS);
+  }
+
+  function upgradeCost(up, level) {
+    return Math.ceil(up.base * Math.pow(up.rate, level) * easeFactor(level));
+  }
 
   function upgradeLevel(s, id) { return s.upgrades[id] || 0; }
 
@@ -15,18 +33,37 @@
     return up.max !== undefined && upgradeLevel(s, up.id) >= up.max;
   }
 
+  /* Cost of `n` levels from `lvl`. Exact through the eased range — at most a
+     dozen terms — then the closed form, which is what the rest of the curve is. */
+  function sumCost(up, lvl, n) {
+    var total = 0, i = 0;
+    for (; i < n && lvl + i < EASE_LEVELS; i++) total += upgradeCost(up, lvl + i);
+    if (i < n) total += num.geoSum(up.base, up.rate, lvl + i, n - i);
+    return total;
+  }
+
+  function maxAffordable(up, lvl, gold) {
+    var n = 0, spent = 0, c;
+    while (lvl + n < EASE_LEVELS) {
+      c = upgradeCost(up, lvl + n);
+      if (spent + c > gold) return n;
+      spent += c; n++;
+    }
+    return n + num.geoMax(up.base, up.rate, lvl + n, gold - spent);
+  }
+
   /* Cost of the next `count` levels (count may be 'max'). */
   function bulkCost(s, up, count) {
     var lvl = upgradeLevel(s, up.id);
     if (count === 'max') {
-      count = num.geoMax(up.base, up.rate, lvl, s.gold);
+      count = maxAffordable(up, lvl, s.gold);
       if (up.max !== undefined) count = Math.min(count, up.max - lvl);
       if (count <= 0) return { count: 0, cost: Infinity };
     } else if (up.max !== undefined) {
       count = Math.min(count, up.max - lvl);
       if (count <= 0) return { count: 0, cost: Infinity };
     }
-    return { count: count, cost: Math.ceil(num.geoSum(up.base, up.rate, lvl, count)) };
+    return { count: count, cost: Math.ceil(sumCost(up, lvl, count)) };
   }
 
   function buyUpgrade(s, id, count) {
