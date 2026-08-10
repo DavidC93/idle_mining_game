@@ -375,13 +375,24 @@
     return c;
   }
 
+  /* What this tier buys you in depth. Every tier has a barrier, so this is
+     never empty — that was the whole point of the barrier table.
+
+     A tier's own barrier is the one it *removes*, not where it stops: forging
+     steel clears the wall at 1250 and lets you dig on to the next one at 1600.
+     So the number to quote is where the player ends up, which is the following
+     barrier's depth. */
   function gateNote(tier) {
-    for (var i = 0; i < G.STRATA.length; i++) {
-      if (G.STRATA[i].gate === tier) {
-        return ' · פותח את ' + G.STRATA[i].name + ' (' + num.fmtDepth(G.STRATA[i].minDepth) + ')';
-      }
+    var mine = null, i;
+    for (i = 0; i < G.BARRIERS.length; i++) {
+      if (G.BARRIERS[i].tier === tier) { mine = G.BARRIERS[i]; break; }
     }
-    return '';
+    if (!mine) return '';
+    if (mine.stratum !== null) {
+      return ' · פותח את ' + G.STRATA[mine.stratum].name + ' (' + num.fmtDepth(mine.depth) + ')';
+    }
+    var after = G.nextBarrier(tier);
+    return ' · מאפשר לחפור עד ' + num.fmtDepth(after ? after.depth : G.BAL.bedrock);
   }
 
   /* =====================================================================

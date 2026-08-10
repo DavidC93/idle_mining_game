@@ -120,6 +120,55 @@
                                    { id: 'singularityShard', n: 40 }] } }
   ];
 
+  /* ---------------------------------------------------------------------- */
+  /* Depth barriers — one per pickaxe tier.
+
+     Barriers used to sit only on the stratum boundaries, and there are eleven
+     strata against nineteen pickaxe upgrades. Nine tiers therefore opened
+     nothing: you would save up for the steel pickaxe, forge it, and the wall
+     would not move, because the wall was waiting for silver. That is the one
+     question a new pickaxe has to answer — how much deeper does this let me go
+     — and half the ladder answered "not at all".
+
+     Now every tier moves the wall. The ones that land on a stratum's minDepth
+     are still the big moments: they open a whole new layer, its loot table and
+     its palette. The ones in between buy more of the layer you are already in,
+     which is a smaller reward but never a wasted one.
+
+     Layer mouths are derived from STRATA rather than typed twice, so a layer
+     cannot drift away from the barrier that opens it. There are ten of those
+     and nineteen tiers, so nine barriers sit between layers.
+
+     Bedrock is deliberately NOT one of them: a barrier is something the *next*
+     pickaxe opens, so making bedrock the last barrier would leave the final
+     pickaxe opening nothing — the same dead tier, moved to the end of the
+     ladder. Bedrock is what tier 19 reaches. */
+  var MID = [700, 1250, 2050, 3250, 4900, 7150, 10100, 13800, 14900];
+
+  var BARRIERS = (function () {
+    var out = [], i;
+    for (i = 1; i < G.STRATA.length; i++) out.push({ depth: G.STRATA[i].minDepth, stratum: i });
+    for (i = 0; i < MID.length; i++) out.push({ depth: MID[i], stratum: null });
+    out.sort(function (a, b) { return a.depth - b.depth; });
+    for (i = 0; i < out.length; i++) out[i].tier = i + 1;
+    return out;
+  })();
+
+  /* One source of truth: a stratum's gate is the tier of the barrier standing
+     at its mouth. */
+  for (var g = 0; g < BARRIERS.length; g++) {
+    if (BARRIERS[g].stratum !== null) G.STRATA[BARRIERS[g].stratum].gate = BARRIERS[g].tier;
+  }
+  G.STRATA[0].gate = 0;
+
+  /* The barrier blocking a player on `tier`, or null once they are all open. */
+  function nextBarrier(tier) {
+    for (var i = 0; i < BARRIERS.length; i++) {
+      if (BARRIERS[i].tier > tier) return BARRIERS[i];
+    }
+    return null;
+  }
+
   var recipeById = {};
   for (var i = 0; i < RECIPES.length; i++) recipeById[RECIPES[i].id] = RECIPES[i];
 
@@ -127,6 +176,8 @@
   G.RECIPES = RECIPES;
   G.RECIPE_BY_ID = recipeById;
   G.PICKAXES = PICKAXES;
+  G.BARRIERS = BARRIERS;
+  G.nextBarrier = nextBarrier;
 
   /* Fold smelted goods into the shared resource table. */
   /* Fold smelted goods into the shared resource table, pricing each at

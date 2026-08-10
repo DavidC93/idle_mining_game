@@ -108,8 +108,9 @@
   }
 
   /* --- strata -------------------------------------------------------------
-     `gate` is the pickaxe tier needed to break the barrier at `minDepth`;
-     `hardness` multiplies rock HP. Drop tables list the layer's own three
+     `hardness` multiplies rock HP. `gate` — the pickaxe tier that opens this
+     layer — is filled in by the barrier table in data/recipes.js, so the layer
+     and the barrier at its mouth cannot drift apart. Drop tables list the layer's own three
      resources plus a carry-over, and take their weights from the rarity of the
      resource itself — so a layer's rare item is rare everywhere, always.     */
 
@@ -117,27 +118,27 @@
     /* NB: 'gravel' is both a resource id and a stratum id, so these two blocks
        get written by hand — a pattern keyed on the id alone finds the resource
        first and repaints the wrong layer. */
-    { id: 'topsoil',  name: 'אדמה עליונה', minDepth: 0,     gate: 0,  hardness: 1,   sky: true,
+    { id: 'topsoil',  name: 'אדמה עליונה', minDepth: 0,     hardness: 1,   sky: true,
       colors: { base: '#b87a3c', dark: '#8a5423', light: '#dda45c', accent: '#5c3410' } },
-    { id: 'gravel',   name: 'שכבת חצץ',    minDepth: 60,    gate: 1,  hardness: 1.6,
+    { id: 'gravel',   name: 'שכבת חצץ',    minDepth: 60,    hardness: 1.6,
       colors: { base: '#8b86a8', dark: '#635e83', light: '#b3aed0', accent: '#443f60' } },
-    { id: 'sediment', name: 'סלע משקע',    minDepth: 200,   gate: 2,  hardness: 2.4, glow: '#5a8fc7',
+    { id: 'sediment', name: 'סלע משקע',    minDepth: 200,   hardness: 2.4, glow: '#5a8fc7',
       colors: { base: '#4f7fb5', dark: '#33578a', light: '#77a8dc', accent: '#223d63' } },
-    { id: 'igneous',  name: 'סלע יסוד',    minDepth: 500,   gate: 3,  hardness: 3.4,
+    { id: 'igneous',  name: 'סלע יסוד',    minDepth: 500,   hardness: 3.4,
       colors: { base: '#8a4f8e', dark: '#5f3163', light: '#b174b5', accent: '#3f1f42' } },
-    { id: 'deeprock', name: 'סלע עמוק',    minDepth: 950,   gate: 5,  hardness: 4.6, glow: '#4d8ae0',
+    { id: 'deeprock', name: 'סלע עמוק',    minDepth: 950,   hardness: 4.6, glow: '#4d8ae0',
       colors: { base: '#3a6cc0', dark: '#244894', light: '#5a95e8', accent: '#16306b' } },
-    { id: 'crystal',  name: 'מערות גביש',  minDepth: 1600,  gate: 7,  hardness: 6,   glow: '#a06bff',
+    { id: 'crystal',  name: 'מערות גביש',  minDepth: 1600,  hardness: 6,   glow: '#a06bff',
       colors: { base: '#6a45c8', dark: '#48298f', light: '#9370f0', accent: '#2f1a68' } },
-    { id: 'magma',    name: 'מדף המגמה',   minDepth: 2600,  gate: 9,  hardness: 8,   glow: '#ff6a2a',
+    { id: 'magma',    name: 'מדף המגמה',   minDepth: 2600,  hardness: 8,   glow: '#ff6a2a',
       colors: { base: '#b2411f', dark: '#7d2510', light: '#e0703a', accent: '#521404' } },
-    { id: 'abyss',    name: 'שכבות התהום', minDepth: 4000,  gate: 11, hardness: 11,  glow: '#31d6c0',
+    { id: 'abyss',    name: 'שכבות התהום', minDepth: 4000,  hardness: 11,  glow: '#31d6c0',
       colors: { base: '#178a86', dark: '#0c5f5f', light: '#2fc0b4', accent: '#054040' } },
-    { id: 'void',     name: 'בקע הריק',    minDepth: 6000,  gate: 13, hardness: 15,  glow: '#5b4cff',
+    { id: 'void',     name: 'בקע הריק',    minDepth: 6000,  hardness: 15,  glow: '#5b4cff',
       colors: { base: '#4331a8', dark: '#2c1d78', light: '#6a52e0', accent: '#1a0f52' } },
-    { id: 'mantle',   name: 'ליבת המעטפת', minDepth: 8500,  gate: 15, hardness: 21,  glow: '#ff9c2a',
+    { id: 'mantle',   name: 'ליבת המעטפת', minDepth: 8500,  hardness: 21,  glow: '#ff9c2a',
       colors: { base: '#c25718', dark: '#8d360a', light: '#ee8433', accent: '#5c2004' } },
-    { id: 'heart',    name: 'לב סלע האם',  minDepth: 12000, gate: 17, hardness: 30,  glow: '#8ff0ff',
+    { id: 'heart',    name: 'לב סלע האם',  minDepth: 12000, hardness: 30,  glow: '#8ff0ff',
       colors: { base: '#1274a0', dark: '#08506f', light: '#2ba3d4', accent: '#03354c' } }
   ];
 

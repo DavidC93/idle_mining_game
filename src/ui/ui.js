@@ -284,16 +284,17 @@
       var cap = G.Stats.depthCap(s);
       if (!isFinite(cap) || s.frontier < cap - 0.5) { show(false); return; }
 
-      var blockedStratum = null;
-      for (var i = 0; i < G.STRATA.length; i++) {
-        if (G.STRATA[i].minDepth === cap) { blockedStratum = G.STRATA[i]; break; }
-      }
-      if (!blockedStratum) { show(false); return; }
-      var needPick = G.PICKAXES[blockedStratum.gate];
+      var barrier = G.nextBarrier(s.pickTier);
+      if (!barrier) { show(false); return; }
+      var needPick = G.PICKAXES[barrier.tier];
       show(true);
       setText('gate-title', 'מחסום ב־' + num.fmtDepth(cap));
-      setText('gate-sub', 'כדי לפרוץ אל ' + blockedStratum.name + ' דרוש ' + needPick.name +
-                         '. חשל אותו בכפתור "המכוש".');
+      /* Say what is on the other side. Most barriers just buy more of the layer
+         you are in; the ones standing at a layer's mouth are worth naming. */
+      setText('gate-sub', (barrier.stratum !== null
+        ? 'כדי לפרוץ אל ' + G.STRATA[barrier.stratum].name + ' דרוש ' + needPick.name
+        : 'כדי להמשיך לעומק דרוש ' + needPick.name) +
+        '. חשל אותו בכפתור "המכוש".');
     },
 
     /* ---- top bar controls ------------------------------------------------ */

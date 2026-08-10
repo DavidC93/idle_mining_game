@@ -147,15 +147,23 @@
     return true;
   }
 
-  /* Highest stratum the player is allowed to stand in, given the pickaxe.
+  /* Highest stratum the player is allowed to stand in: one they have reached,
+     and can actually work inside.
+
+     Both halves are needed. The frontier stops exactly ON a barrier, and a
+     barrier at a layer's mouth sits at that layer's own minDepth — so "reached
+     it" alone counts you as standing in a layer you cannot enter. That put the
+     miner in the gravel layer at 60m with a wooden pickaxe, mining a drop
+     table with none of the clay or pebbles the first pickaxe is made of: a
+     twelve-hour run that never left the first wall.
 
      Keyed off this run's frontier, not the lifetime record: after a cave-in you
      genuinely have to dig back down. `maxDepthEver` is a lifetime stat used by
      achievements and shop unlocks, which you keep. */
   function maxUnlockedStratum(s) {
-    var last = 0;
+    var cap = depthCap(s), last = 0;
     for (var i = 0; i < G.STRATA.length; i++) {
-      if (s.pickTier >= G.STRATA[i].gate && s.frontier + 1e-6 >= G.STRATA[i].minDepth) last = i;
+      if (s.frontier + 1e-6 >= G.STRATA[i].minDepth && G.STRATA[i].minDepth < cap) last = i;
       else break;
     }
     return last;
@@ -163,13 +171,12 @@
 
   /* Depth beyond which the player cannot dig until the next pickaxe is forged.
      Returning a hard wall (rather than just slower digging) is what turns the
-     forge into a goal instead of an optimisation. With every gate open the wall
-     is bedrock itself — see BAL.bedrock. */
+     forge into a goal instead of an optimisation. Every pickaxe tier has a
+     barrier of its own — see G.BARRIERS — so there is no such thing as forging
+     one and finding the wall has not moved. */
   function depthCap(s) {
-    for (var i = 0; i < G.STRATA.length; i++) {
-      if (s.pickTier < G.STRATA[i].gate) return G.STRATA[i].minDepth;
-    }
-    return BAL.bedrock;
+    var b = G.nextBarrier(s.pickTier);
+    return b ? b.depth : BAL.bedrock;
   }
 
   G.Stats = {

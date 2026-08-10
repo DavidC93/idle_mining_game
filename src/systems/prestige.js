@@ -37,12 +37,8 @@
 
   function startingDepth(s, o) {
     // Never start deeper than the pickaxe you keep can legally reach.
-    var d = o.startDepth;
-    var keptTier = keptPickTier(s, o);
-    for (var i = 0; i < G.STRATA.length; i++) {
-      if (keptTier < G.STRATA[i].gate) return Math.min(d, G.STRATA[i].minDepth);
-    }
-    return d;
+    var b = G.nextBarrier(keptPickTier(s, o));
+    return b ? Math.min(o.startDepth, b.depth) : o.startDepth;
   }
 
   function keptPickTier(s, o) {

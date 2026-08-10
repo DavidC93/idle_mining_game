@@ -190,7 +190,7 @@
         if (s.frontier > s.stats.maxDepthEver) s.stats.maxDepthEver = s.frontier;
         // Follow the frontier into a newly opened stratum.
         var fs = G.stratumAt(s.frontier);
-        if (fs.index > s.station && s.pickTier >= fs.gate) s.station = fs.index;
+        if (fs.index > s.station) s.station = fs.index;
       }
     }
 
@@ -283,7 +283,7 @@
       s.frontier = Math.min(cap, s.frontier + n * depthPerBreak(o));
       if (s.frontier > s.stats.maxDepthEver) s.stats.maxDepthEver = s.frontier;
       var fs = G.stratumAt(s.frontier);
-      if (fs.index > s.station && s.pickTier >= fs.gate) s.station = fs.index;
+      if (fs.index > s.station) s.station = fs.index;
       spawnRock(s);
     }
   }
@@ -335,8 +335,6 @@
     var cap = G.Stats.depthCap(s);
     if (s.frontier >= cap) return;
     var stratum = G.stratumAt(s.frontier);
-    if (s.pickTier < stratum.gate) return;
-
     var hp = G.Stats.rockHP(s.frontier, stratum);
     var perSwing = Math.min(BAL.chainCap, (o.hitPower * DRILL_POWER_SHARE) / hp);
     var breaks = DRILL_SWING_SHARE * o.swingRate * perSwing * dt;

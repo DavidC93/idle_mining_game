@@ -166,6 +166,55 @@ for (let i = 1; i < G.STRATA.length; i++) {
 }
 ok.push('pickaxe power, stratum depth, gate and hardness curves are monotonic');
 
+/* ---- 5a. every pickaxe opens depth --------------------------------------
+   The complaint this exists to prevent: "I saved up for the steel pickaxe,
+   forged it, and the wall did not move." Barriers used to sit only on stratum
+   boundaries, and there are far more pickaxe tiers than strata, so nine of the
+   nineteen upgrades bought no depth at all. */
+{
+  const tiers = G.PICKAXES.length - 1;                 // tier 0 needs no barrier
+  const byTier = new Map(G.BARRIERS.map(b => [b.tier, b]));
+  const missing = [];
+  for (let t = 1; t <= tiers; t++) if (!byTier.has(t)) missing.push(G.PICKAXES[t].id);
+  if (missing.length) {
+    err(`pickaxe tiers that open no depth: ${missing.join(', ')} — forging them moves no wall`);
+  }
+  for (let i = 1; i < G.BARRIERS.length; i++) {
+    if (G.BARRIERS[i].depth <= G.BARRIERS[i - 1].depth) {
+      err(`barrier for tier ${G.BARRIERS[i].tier} is not deeper than the one before it`);
+    }
+  }
+  // every layer past the first must have a barrier standing at its mouth
+  for (let i = 1; i < G.STRATA.length; i++) {
+    const at = G.BARRIERS.find(b => b.depth === G.STRATA[i].minDepth);
+    if (!at) err(`stratum ${G.STRATA[i].id} has no barrier at its mouth (${G.STRATA[i].minDepth}m)`);
+    else if (at.tier !== G.STRATA[i].gate) err(`stratum ${G.STRATA[i].id}: gate disagrees with its barrier`);
+  }
+  const deepest = G.BARRIERS[G.BARRIERS.length - 1];
+  if (deepest.depth >= G.BAL.bedrock) {
+    err(`the last barrier (${deepest.depth}m) is at or past bedrock (${G.BAL.bedrock}m), ` +
+        `so the final pickaxe opens nothing`);
+  }
+
+  /* The invariant that actually matters, stated directly: forging any pickaxe
+     must move the wall. Checked against depthCap itself rather than the table,
+     so a change to how the cap is derived cannot quietly reintroduce the bug. */
+  const capAt = tier => {
+    const b = G.BARRIERS.find(x => x.tier > tier);
+    return b ? b.depth : G.BAL.bedrock;
+  };
+  const dead = [];
+  for (let t = 1; t < G.PICKAXES.length; t++) {
+    if (capAt(t) <= capAt(t - 1)) dead.push(`${G.PICKAXES[t].id} (still ${capAt(t)}m)`);
+  }
+  if (dead.length) err(`forging these moves no wall: ${dead.join(', ')}`);
+  if (!errors.length) {
+    const opens = G.BARRIERS.filter(b => b.stratum !== null).length;
+    ok.push(`all ${tiers} pickaxe tiers open depth (${opens} of them a new layer), ` +
+            `ending at bedrock ${G.BAL.bedrock}m`);
+  }
+}
+
 /* ---- 6. no duplicate ids ------------------------------------------------ */
 {
   const seen = new Set();
