@@ -28,9 +28,11 @@
        is what prestige is for. */
     bedrock: 16000,
 
-    /* Swings per second before speed multipliers. Fast enough that the very
-       first minute already produces visible drops. */
-    baseSwingRate: 1.6,
+    /* Swings per second before speed multipliers. Deliberately unhurried: the
+       opening should read as a person working, not a drill. One swing a second
+       against a 3.5 HP rock is a find every three or four seconds, and the
+       speed upgrade adds 1% a level from there. */
+    baseSwingRate: 1.0,
     /* Animation stops speeding up past this; extra speed becomes damage so the
        scene never turns into a strobe. */
     maxVisualSwingRate: 6,

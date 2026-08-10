@@ -9,12 +9,16 @@
     s: null,
     o: null,
     statsAge: 0,
-    goldRateWindow: [],
+    goldRate: 0,
     lastGold: 0,
 
     init: function (state) {
       G.registerGoods();
       this.s = state || G.State.newState();
+      // Rebase the rate estimator, or loading a save reads the whole lifetime
+      // total as one frame's income.
+      this.lastGold = this.s.stats.lifetimeGold;
+      this.goldRate = 0;
       if (!this.s.rock) G.Mining.spawnRock(this.s);
       this.refresh();
       return this.s;
@@ -50,19 +54,31 @@
       s.lastTick = Date.now();
     },
 
-    /* Gold per second, smoothed over a few seconds so the HUD does not flicker. */
+    /* Gold per second for the HUD.
+
+       Income is lumpy — a sale lands the whole stack in one frame and then
+       nothing happens for half a minute. A short averaging window therefore
+       spent most of its life reading exactly 0 and snapping to a big number
+       whenever a sale fell inside it, which is both useless as information and
+       visually jumpy.
+
+       An exponential moving average fixes both. Its expected value is still the
+       true average gold per second, but it decays smoothly between lumps
+       instead of falling off a cliff, and the weight is proportional to dt so
+       the reading does not depend on frame rate. */
+    goldRateTau: 12,        // seconds; how long one sale keeps showing
+
     sampleGoldRate: function (dt) {
       var s = this.s;
       var delta = s.stats.lifetimeGold - this.lastGold;
       this.lastGold = s.stats.lifetimeGold;
-      this.goldRateWindow.push({ d: delta, t: dt });
-      var totalT = 0, totalD = 0;
-      for (var i = this.goldRateWindow.length - 1; i >= 0; i--) {
-        totalT += this.goldRateWindow[i].t;
-        totalD += this.goldRateWindow[i].d;
-        if (totalT > 4) { this.goldRateWindow.splice(0, i); break; }
-      }
-      return totalT > 0 ? totalD / totalT : 0;
+      if (!(dt > 0)) return this.goldRate || 0;
+
+      var k = 1 - Math.exp(-dt / this.goldRateTau);
+      this.goldRate = (this.goldRate || 0) + (delta / dt - (this.goldRate || 0)) * k;
+      // Park tiny residue at zero so the HUD shows "0" rather than "0.0001".
+      if (this.goldRate < 1e-3) this.goldRate = 0;
+      return this.goldRate;
     },
 
     /* Breaks per second the player is currently sustaining, for the HUD. */

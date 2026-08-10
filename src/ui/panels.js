@@ -18,14 +18,30 @@
      repeatable purchase shows its real current value and what the pending buy
      would make it. */
 
-  function fmtReadout(v, kind) {
+  function fmtReadout(v, kind, dec) {
     switch (kind) {
-      case 'mult':  return '×' + num.fmt(v);
-      case 'pct':   return num.fmtPct(v, v < 0.1 ? 1 : 0);
+      case 'mult':  return '×' + num.fmt(v, dec);
+      case 'pct':   return num.fmtPct(v, dec !== undefined ? dec : (v < 0.1 ? 1 : 0));
       case 'time':  return num.fmtTime(v);
       case 'depth': return num.fmtDepth(v);
-      default:      return num.fmt(v);
+      default:      return num.fmt(v, dec);
     }
+  }
+
+  /* Render `a` and `b` with just enough precision to tell them apart.
+
+     The default formatter keeps three significant digits, which is right for a
+     HUD and wrong for a preview: a 1%-per-level upgrade at 1.00 swings/second
+     renders both sides as "1", so the row claims the purchase does nothing.
+     Widening the decimals until the two strings differ keeps every other
+     readout exactly as it was. */
+  function fmtPair(a, b, kind) {
+    for (var d = undefined, i = 0; i < 4; i++) {
+      var sa = fmtReadout(a, kind, d), sb = fmtReadout(b, kind, d);
+      if (sa !== sb) return [sa, sb];
+      d = (d === undefined ? 1 : d) + 1;
+    }
+    return [fmtReadout(a, kind), fmtReadout(b, kind)];
   }
 
   /* "label: current → next", with the delta coloured by whether it helps. */
@@ -33,13 +49,15 @@
     var ro = G.Stats.readoutFor(def);
     if (!ro) return null;
     var a = cur[ro.key], b = next ? next[ro.key] : null;
+    var changed = next && Math.abs(b - a) > 1e-9;
+    var text = changed ? fmtPair(a, b, ro.kind) : [fmtReadout(a, ro.kind), null];
     var line = el('div', 'row-stat');
     line.appendChild(el('span', 'row-stat-label', ro.label));
-    line.appendChild(el('b', null, fmtReadout(a, ro.kind)));
-    if (next && Math.abs(b - a) > 1e-9) {
+    line.appendChild(el('b', null, text[0]));
+    if (changed) {
       var better = ro.lower ? b < a : b > a;
       line.appendChild(el('span', 'row-stat-arrow', '←'));
-      line.appendChild(el('b', better ? 'good' : 'bad', fmtReadout(b, ro.kind)));
+      line.appendChild(el('b', better ? 'good' : 'bad', text[1]));
     }
     return line;
   }
@@ -591,7 +609,9 @@
 
       /* --- talents --- */
       var tc = U.card('עץ הכישרונות', num.fmt(s.cores) + ' 💠 זמינות', {
-        right: U.button('איפוס חינם', 'sm', function () {
+        /* Was "איפוס חינם", which reads like a full data reset when you are
+           hunting for one. It only refunds talent points. */
+        right: U.button('איפוס כישרונות', 'sm', function () {
           var back = G.Prestige.respec(s);
           G.UI.toast('💠', 'הוחזרו ' + num.fmt(back) + ' ליבות', 'בנה מחדש איך שבא לך');
           game.refresh(); G.UI.refresh();

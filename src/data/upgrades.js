@@ -37,10 +37,13 @@
       base: 25, rate: 1.70, effect: { mult: 'power', per: 0.06 }, max: 150,
       readout: { key: 'hitPower', label: 'עוצמת מכה', kind: 'num' } },
 
-    /* E = 0.081 (speed) */
+    /* E = 0.081 (speed). Small steps on purpose — swing speed is the stat the
+       player watches most, so it climbs in percents, not leaps. The cost rate
+       is set to hold the same exponent as the old 4%-a-level version, so this
+       is a change of texture, not of pacing. */
     { id: 'swiftness', name: 'זריזות ידיים', icon: '💨',
-      desc: 'כל רמה מוסיפה 4% למהירות ההנפה. (מקסימום 100 רמות)',
-      base: 90, rate: 1.62, effect: { mult: 'speed', per: 0.04 }, max: 100,
+      desc: 'כל רמה מוסיפה 1% למהירות ההנפה. (מקסימום 400 רמות)',
+      base: 90, rate: 1.13, effect: { mult: 'speed', per: 0.01 }, max: 400,
       readout: { key: 'swingRate', label: 'הנפות בשנייה', kind: 'num' } },
 
     /* E = 0.081 (yield) */

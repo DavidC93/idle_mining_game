@@ -25,7 +25,8 @@
       return (neg ? '-' : '') + n.toExponential(2).replace('e+', 'e');
     }
     var scaled = n / Math.pow(1000, tier);
-    var dec = scaled < 10 ? 2 : (scaled < 100 ? 1 : 0);
+    var dec = decimals !== undefined ? decimals
+                                     : (scaled < 10 ? 2 : (scaled < 100 ? 1 : 0));
     return (neg ? '-' : '') + trimZeros(scaled.toFixed(dec)) + SUFFIX[tier];
   }
 

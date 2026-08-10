@@ -115,12 +115,14 @@ button:not(:disabled):active { transform: scale(.965); }
 .stat-strip {
   flex: 1 1 auto;
   display: flex; gap: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   scrollbar-width: none;
 }
 .stat-strip::-webkit-scrollbar { display: none; }
 
 .stat {
+  /* equal shares, so a chip can never grow into its neighbour */
+  flex: 1 1 0; min-width: 0;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 13px;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
@@ -131,10 +133,22 @@ button:not(:disabled):active { transform: scale(.965); }
 }
 #stat-gold  { border-color: rgba(255,201,60,.4);  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(255,201,60,.13); }
 #stat-cores { border-color: rgba(86,221,255,.42); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px rgba(86,221,255,.16); }
-.stat-icon { font-size: 16px; opacity: .9; }
-.stat-body { display: flex; flex-direction: column; line-height: 1.2; }
-.stat-body b { font-size: 15px; font-variant-numeric: tabular-nums; }
-.stat-body small { font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.stat-icon { font-size: 16px; opacity: .9; flex: none; }
+
+/* The numbers inside change several times a second. Without a reserved width
+   the chip resizes to fit, which pushes its neighbours, which resizes the
+   strip — the whole top bar visibly shivers. Fixed shares plus tabular figures
+   make the geometry independent of the digits. */
+.stat-body {
+  display: flex; flex-direction: column; line-height: 1.2;
+  min-width: 0; flex: 1 1 auto; align-items: center; text-align: center;
+}
+.stat-body b, .stat-body small {
+  font-variant-numeric: tabular-nums;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stat-body b { font-size: 15px; }
+.stat-body small { font-size: 10.5px; color: var(--ink-3); }
 
 #stat-gold b {
   color: var(--gold);
@@ -808,8 +822,8 @@ button:not(:disabled):active { transform: scale(.965); }
   #topbar { padding: calc(6px + env(safe-area-inset-top)) 8px 6px; gap: 7px; }
   /* Compress to fit instead of scrolling: a stat sliced in half by the screen
      edge looks like a rendering bug. */
-  .stat-strip { gap: 5px; overflow: visible; }
-  .stat { padding: 4px 9px; gap: 5px; min-width: 0; flex: 1 1 0; justify-content: center; }
+  .stat-strip { gap: 5px; }
+  .stat { padding: 4px 9px; gap: 5px; justify-content: center; }
   .stat-icon { font-size: 14px; }
   .stat-body { min-width: 0; }
   .stat-body b { font-size: 13px; }

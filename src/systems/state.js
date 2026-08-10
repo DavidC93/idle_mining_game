@@ -66,7 +66,16 @@
 
   /* ---- persistence ------------------------------------------------------ */
 
+  /* Set by wipe(). Erasing the save is always followed by a page reload, and a
+     reload fires `beforeunload` — which saves. The old save was therefore
+     written straight back a moment after being deleted, and "start over" did
+     nothing at all. Latching the flag here rather than unbinding the listener
+     covers every save path at once: the unload handler, the visibility handler
+     and the autosave timer. */
+  var wiped = false;
+
   function save(s) {
+    if (wiped) return false;
     try {
       s.lastSave = Date.now();
       s.lastTick = Date.now();
@@ -137,6 +146,7 @@
   }
 
   function wipe() {
+    wiped = true;
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
   }
 
